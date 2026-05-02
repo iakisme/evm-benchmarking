@@ -3,6 +3,8 @@ package main
 import (
 	"runtime/debug"
 
+	// Import a lightweight BSC package so the module appears in debug.BuildInfo.Deps.
+	_ "github.com/ethereum/go-ethereum/params"
 	"github.com/spf13/cobra"
 )
 
@@ -27,11 +29,14 @@ func bscDepVersion() string {
 		return "unknown"
 	}
 	for _, dep := range info.Deps {
-		if dep.Path == "github.com/bnb-chain/bsc" {
+		if dep.Path == "github.com/ethereum/go-ethereum" {
+			if dep.Replace != nil {
+				return dep.Replace.Version
+			}
 			return dep.Version
 		}
 	}
-	return "none" // BSC dep not yet wired in early phases
+	return "none"
 }
 
 func runtimeGoVersion() string {
