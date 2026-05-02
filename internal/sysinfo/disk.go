@@ -101,10 +101,34 @@ func hasPathPrefix(p, prefix string) bool {
 	return p == prefix || strings.HasPrefix(p, prefix+string(filepath.Separator))
 }
 
+// blockDeviceName strips the partition suffix from a device name.
+// Examples: "nvme0n1p3" → "nvme0n1", "sda1" → "sda", "mmcblk0p2" → "mmcblk0".
+func blockDeviceName(dev string) string {
+	if strings.HasPrefix(dev, "nvme") || strings.HasPrefix(dev, "mmcblk") {
+		// strip trailing "p<digits>" if present
+		if idx := strings.LastIndex(dev, "p"); idx > 0 {
+			suffix := dev[idx+1:]
+			if len(suffix) > 0 && allDigits(suffix) {
+				return dev[:idx]
+			}
+		}
+		return dev
+	}
+	// SCSI / virtio: strip trailing digits
+	return strings.TrimRight(dev, "0123456789")
+}
+
+func allDigits(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func fillBlockDevAttrs(di *report.DiskInfo) {
-	// /dev/nvme0n1 → "nvme0n1"
-	dev := strings.TrimPrefix(di.Device, "/dev/")
-	dev = strings.TrimRight(dev, "0123456789p")
+	dev := blockDeviceName(strings.TrimPrefix(di.Device, "/dev/"))
 	base := "/sys/block/" + dev
 	if _, err := os.Stat(base); err != nil {
 		return

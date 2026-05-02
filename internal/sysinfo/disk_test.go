@@ -22,6 +22,25 @@ func TestParseMountinfoFiltersOurPaths(t *testing.T) {
 	}
 }
 
+func TestBlockDeviceName(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"nvme0n1", "nvme0n1"},
+		{"nvme0n1p3", "nvme0n1"},
+		{"nvme0n1p15", "nvme0n1"},
+		{"sda", "sda"},
+		{"sda1", "sda"},
+		{"sda12", "sda"},
+		{"vda2", "vda"},
+		{"mmcblk0", "mmcblk0"},
+		{"mmcblk0p1", "mmcblk0"},
+	}
+	for _, c := range cases {
+		if got := blockDeviceName(c.in); got != c.want {
+			t.Errorf("blockDeviceName(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
 func TestRelevantMountsForPaths(t *testing.T) {
 	mounts := []mountEntry{
 		{mount: "/", source: "/dev/sda1", fs: "ext4"},
