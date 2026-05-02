@@ -1,0 +1,53 @@
+{
+  "schema_version": "1",
+  "run": {
+    "id": "2026-05-02T14-30-00Z_bsc10k_host_abc12345",
+    "started_at": "2026-05-02T14:30:00Z",
+    "finished_at": "2026-05-02T15:32:11Z",
+    "bscbench_version": "v0.1.0",
+    "bsc_version": "v1.4.8",
+    "input_hash": "sha256:abc",
+    "from_block": 40000000,
+    "to_block": 40010000,
+    "block_count": 10000,
+    "warmup_state": "warm",
+    "skip_warmup": false
+  },
+  "sysinfo": {
+    "host": {"hostname": "host", "kernel": "", "os": "linux", "uptime_sec": 0},
+    "cpu": {"model": "", "cores_physical": 0, "cores_logical": 0, "flags_subset": null, "governor": "", "mhz_base": 0},
+    "memory": {"total_bytes": 0, "swap_bytes": 0, "hugepages_total": 0},
+    "disk": null,
+    "go": {"version": "", "gomaxprocs": 0, "gogc": 0},
+    "cloud": null
+  },
+  "metrics": {
+    "mgasps": 87.4,
+    "total_gas_used": 318200000000,
+    "total_tx_count": 1240000,
+    "reverted_tx_count": 0,
+    "total_wall_sec": 3641.2,
+    "tx_per_sec": 0,
+    "block_per_sec": 0,
+    "exec_ns_p50": 1800000,
+    "exec_ns_p95": 0,
+    "exec_ns_p99": 0,
+    "trie_commit_ns_p50": 0,
+    "trie_commit_ns_p95": 0,
+    "trie_commit_ns_p99": 0,
+    "gas_used_per_block_p50": 0,
+    "gas_used_per_block_p95": 0,
+    "gas_used_per_block_p99": 0,
+    "cpu_pct_avg": 0,
+    "cpu_pct_max": 0,
+    "rss_peak_bytes": 0,
+    "disk_read_total_bytes": 0,
+    "disk_write_total_bytes": 0,
+    "disk_read_MBps_avg": 0,
+    "disk_write_MBps_avg": 0
+  },
+  "passes": {
+    "warmup":   {"wall_sec": 4010.7, "gas_used": 318200000000},
+    "measured": {"wall_sec": 3641.2, "gas_used": 318200000000}
+  }
+}
