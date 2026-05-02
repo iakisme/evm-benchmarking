@@ -23,4 +23,7 @@ func TestVersionCommand(t *testing.T) {
 	if !strings.Contains(out, "bsc=") {
 		t.Errorf("expected output to include bsc dependency version, got %q", out)
 	}
+	if !strings.Contains(out, "go=") {
+		t.Errorf("expected output to include go runtime version, got %q", out)
+	}
 }

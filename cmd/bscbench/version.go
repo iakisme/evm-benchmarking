@@ -16,19 +16,21 @@ func newVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print bscbench and BSC dependency versions",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			info, _ := debug.ReadBuildInfo()
 			cmd.Printf("bscbench=%s bsc=%s go=%s\n",
-				Version, bscDepVersion(), runtimeGoVersion())
+				Version, bscDepVersion(info), goVersion(info))
 			return nil
 		},
 	}
 }
 
-func bscDepVersion() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
+func bscDepVersion(info *debug.BuildInfo) string {
+	if info == nil {
 		return "unknown"
 	}
 	for _, dep := range info.Deps {
+		// BSC is a fork of go-ethereum that retains the upstream module path.
+		// When pinned via a replace directive, dep.Replace carries the BSC tag.
 		if dep.Path == "github.com/ethereum/go-ethereum" {
 			if dep.Replace != nil {
 				return dep.Replace.Version
@@ -39,9 +41,8 @@ func bscDepVersion() string {
 	return "none"
 }
 
-func runtimeGoVersion() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
+func goVersion(info *debug.BuildInfo) string {
+	if info == nil {
 		return "unknown"
 	}
 	return info.GoVersion
