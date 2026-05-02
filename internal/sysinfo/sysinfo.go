@@ -29,8 +29,3 @@ func Collect(ctx context.Context, interestingPaths []string) (report.Sysinfo, er
 
 	return si, nil
 }
-
-// TODO(Task 13): remove this stub and replace with real cloud.go implementation.
-func collectCloud(ctx context.Context) *report.CloudInfo {
-	return nil
-}
