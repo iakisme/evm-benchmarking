@@ -8,8 +8,9 @@ import (
 )
 
 type BlocksWriter struct {
-	f  *os.File
-	bw *bufio.Writer
+	f   *os.File
+	bw  *bufio.Writer
+	buf []byte
 }
 
 func NewBlocksWriter(path string) (*BlocksWriter, error) {
@@ -21,14 +22,14 @@ func NewBlocksWriter(path string) (*BlocksWriter, error) {
 	if _, err := bw.WriteString(
 		"block_number,tx_count,gas_used,exec_ns,state_read_count,state_write_count,trie_commit_ns,db_read_bytes,db_write_bytes\n"); err != nil {
 		_ = f.Close()
-		return nil, err
+		return nil, fmt.Errorf("write header: %w", err)
 	}
-	return &BlocksWriter{f: f, bw: bw}, nil
+	return &BlocksWriter{f: f, bw: bw, buf: make([]byte, 0, 96)}, nil
 }
 
 func (w *BlocksWriter) Write(r BlockRecord) error {
 	// hand-rolled to avoid encoding/csv overhead in a 10k-row hot loop
-	buf := make([]byte, 0, 96)
+	buf := w.buf[:0]
 	buf = strconv.AppendUint(buf, r.BlockNumber, 10)
 	buf = append(buf, ',')
 	buf = strconv.AppendUint(buf, uint64(r.TxCount), 10)
@@ -47,6 +48,7 @@ func (w *BlocksWriter) Write(r BlockRecord) error {
 	buf = append(buf, ',')
 	buf = strconv.AppendUint(buf, r.DBWriteBytes, 10)
 	buf = append(buf, '\n')
+	w.buf = buf
 	_, err := w.bw.Write(buf)
 	return err
 }

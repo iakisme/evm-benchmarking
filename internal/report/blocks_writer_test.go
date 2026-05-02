@@ -3,7 +3,6 @@ package report
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -40,8 +39,5 @@ func TestWriteBlocksCSV(t *testing.T) {
 		"2,12,110,210,6,3,55,1100,530\n"
 	if string(got) != want {
 		t.Errorf("CSV mismatch\n--- got\n%s\n--- want\n%s", got, want)
-	}
-	if !strings.HasSuffix(path, ".csv") {
-		t.Errorf("path: %s", path)
 	}
 }
