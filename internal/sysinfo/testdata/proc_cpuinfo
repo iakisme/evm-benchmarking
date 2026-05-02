@@ -1,0 +1,24 @@
+processor	: 0
+vendor_id	: GenuineIntel
+cpu family	: 6
+model name	: Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+cpu MHz		: 2900.000
+physical id	: 0
+core id		: 0
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx pdpe1gb rdtscp lm pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm avx2 avx512f
+
+processor	: 1
+vendor_id	: GenuineIntel
+model name	: Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+cpu MHz		: 2900.000
+physical id	: 0
+core id		: 0
+flags		: fpu vme
+
+processor	: 2
+vendor_id	: GenuineIntel
+model name	: Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+cpu MHz		: 2900.000
+physical id	: 0
+core id		: 1
+flags		: fpu vme
