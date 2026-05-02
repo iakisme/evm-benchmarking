@@ -25,7 +25,7 @@ func WriteResult(r *Result, path string) error {
 		return fmt.Errorf("encode: %w", err)
 	}
 	if err := tmp.Close(); err != nil {
-		return err
+		return fmt.Errorf("close temp: %w", err)
 	}
 	if err := os.Rename(tmp.Name(), path); err != nil {
 		return fmt.Errorf("rename: %w", err)
