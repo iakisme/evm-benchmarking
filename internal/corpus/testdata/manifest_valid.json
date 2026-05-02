@@ -1,0 +1,13 @@
+{
+  "schema_version": "1",
+  "chain_id": 56,
+  "from_block": 40000000,
+  "to_block": 40010000,
+  "block_count": 10000,
+  "expected_state_root_at_from": "0x1111111111111111111111111111111111111111111111111111111111111111",
+  "fork_schedule": {"haberFork": 38000000, "lorentzFork": 39000000},
+  "generator": "mainnet-export",
+  "generated_at": "2026-05-02T00:00:00Z",
+  "input_hash": "sha256:abcdef",
+  "bsc_version_recommended": "v1.4.8"
+}
