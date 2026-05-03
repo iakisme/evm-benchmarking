@@ -9,5 +9,5 @@
   "generator": "mainnet-export",
   "generated_at": "2026-05-02T00:00:00Z",
   "input_hash": "sha256:abcdef",
-  "bsc_version_recommended": "v1.4.8"
+  "bsc_version_recommended": "v1.7.3"
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
+	pebbledb "github.com/ethereum/go-ethereum/ethdb/pebble"
+	"github.com/ethereum/go-ethereum/triedb"
 )
 
 // DB is the tuple of low-level handles bscbench needs.
@@ -31,20 +33,28 @@ func Open(stateDir string) (*DB, error) {
 	chaindata := filepath.Join(stateDir, "chaindata")
 	ancient := filepath.Join(stateDir, "ancient")
 
-	disk, err := rawdb.Open(rawdb.OpenOptions{
-		Type:              "pebble",
-		Directory:         chaindata,
-		AncientsDirectory: ancient,
-		Namespace:         "bscbench/",
-		Cache:             1024, // MB; small, since we measure VM, not DB cache size effects
-		Handles:           512,
-		ReadOnly:          false, // we mutate via state Commit; bscbench's runner copies state into a workdir first
+	// Open the underlying pebble KV first; rawdb.Open then wraps it together
+	// with the on-disk freezer. Cache/handles are intentionally small —
+	// bscbench measures EVM throughput, not DB cache sizing.
+	const (
+		cacheMB     = 1024
+		fileHandles = 512
+	)
+	kv, err := pebbledb.New(chaindata, cacheMB, fileHandles, "bscbench/", false /*readonly*/)
+	if err != nil {
+		return nil, fmt.Errorf("pebble open: %w", err)
+	}
+	disk, err := rawdb.Open(kv, rawdb.OpenOptions{
+		Ancient:          ancient,
+		MetricsNamespace: "bscbench/",
+		ReadOnly:         false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("rawdb open: %w", err)
 	}
 
-	stateCache := state.NewDatabaseWithConfig(disk, nil)
+	tdb := triedb.NewDatabase(disk, nil)
+	stateCache := state.NewDatabase(tdb, nil)
 	return &DB{Path: stateDir, Disk: disk, State: stateCache}, nil
 }
 

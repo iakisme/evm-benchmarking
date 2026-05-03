@@ -9,7 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/triedb"
 
 	"github.com/kai-w/bscbench/internal/chain"
 	"github.com/kai-w/bscbench/internal/corpus"
@@ -48,8 +48,9 @@ func RunPass(
 	cfg.applyDefaults()
 
 	cdb := metrics.NewCountingDB(db.Disk)
+	tdb := triedb.NewDatabase(cdb, nil)
 	stateDB, err := state.New(parseStateRoot(c.Manifest().ExpectedStateRootAtFrom),
-		state.NewDatabaseWithConfig(cdb, nil), nil)
+		state.NewDatabase(tdb, nil))
 	if err != nil {
 		return PassResult{}, fmt.Errorf("open state: %w", err)
 	}
@@ -76,17 +77,11 @@ func RunPass(
 	}
 
 	hooks := &chain.Hooks{
-		NewTracer: func() vm.EVMLogger {
+		NewTracer: func() chain.EVMTracer {
 			if !cfg.Measured {
 				return nil
 			}
 			return metrics.NewStateOpCounter()
-		},
-		ReadTracer: func(t vm.EVMLogger) (uint64, uint64) {
-			if c, ok := t.(*metrics.StateOpCounter); ok {
-				return c.Counts()
-			}
-			return 0, 0
 		},
 	}
 

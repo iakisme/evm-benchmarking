@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
@@ -25,10 +26,17 @@ type ApplyBlockResult struct {
 	SystemTxSkipped uint32
 }
 
+// EVMTracer is what chain.ApplyBlock can use as an EVM tracer. It bundles a
+// tracing.Hooks for installation in vm.Config and a Counts accessor.
+type EVMTracer interface {
+	Hooks() *tracing.Hooks
+	Counts() (reads, writes uint64)
+}
+
 // Hooks is set of optional callbacks for instrumentation. Nil-checked.
+// One tracer per block (not per tx); counts accumulate across the block.
 type Hooks struct {
-	NewTracer  func() vm.EVMLogger
-	ReadTracer func(vm.EVMLogger) (reads, writes uint64)
+	NewTracer func() EVMTracer
 }
 
 // ApplyBlock executes the block's transactions against statedb and returns aggregated info.
@@ -45,9 +53,21 @@ func ApplyBlock(
 ) (ApplyBlockResult, error) {
 	res := ApplyBlockResult{}
 	gp := new(core.GasPool).AddGas(header.GasLimit)
-	chainCtx := stubChainContext{}
+	chainCtx := stubChainContext{cfg: cfg}
 
 	signer := types.MakeSigner(cfg, header.Number, header.Time)
+
+	var tracer EVMTracer
+	var vmHooks *tracing.Hooks
+	if hooks != nil && hooks.NewTracer != nil {
+		tracer = hooks.NewTracer()
+		if tracer != nil {
+			vmHooks = tracer.Hooks()
+		}
+	}
+	vmCfg := vm.Config{Tracer: vmHooks, NoBaseFee: false}
+	blockCtx := core.NewEVMBlockContext(header, chainCtx, &header.Coinbase)
+	evm := vm.NewEVM(blockCtx, stateDB, cfg, vmCfg)
 
 	t0 := timer.Now()
 	for i, tx := range txs {
@@ -57,27 +77,18 @@ func ApplyBlock(
 		}
 		stateDB.SetTxContext(tx.Hash(), i)
 
-		var tracer vm.EVMLogger
-		if hooks != nil && hooks.NewTracer != nil {
-			tracer = hooks.NewTracer()
-		}
-		vmCfg := vm.Config{Tracer: tracer, NoBaseFee: false}
-
-		receipt, err := core.ApplyTransaction(cfg, chainCtx, &header.Coinbase,
-			gp, stateDB, header, tx, &res.UsedGas, vmCfg)
+		receipt, err := core.ApplyTransaction(evm, gp, stateDB, header, tx, &res.UsedGas)
 		if err != nil {
 			return res, fmt.Errorf("tx %d (%s): %w", i, tx.Hash().Hex(), err)
 		}
 		res.Receipts = append(res.Receipts, receipt)
-
-		if hooks != nil && hooks.ReadTracer != nil && tracer != nil {
-			r, w := hooks.ReadTracer(tracer)
-			res.StateReadCount += r
-			res.StateWriteCount += w
-		}
 	}
 	t1 := timer.Now()
 	res.ExecNs = uint64(t1 - t0)
+
+	if tracer != nil {
+		res.StateReadCount, res.StateWriteCount = tracer.Counts()
+	}
 
 	res.StateRoot = stateDB.IntermediateRoot(true /*deleteEmptyObjects*/)
 	t2 := timer.Now()
@@ -121,7 +132,8 @@ func isSystemTx(tx *types.Transaction, header *types.Header, signer types.Signer
 }
 
 // systemContractAddresses mirrors the systemContracts map in BSC Parlia
-// (consensus/parlia/parlia.go lines 86-101, v1.4.8). All 14 entries must be
+// (consensus/parlia/parlia.go lines 104-119, verified against v1.7.3 — same
+// 14 entries with identical addresses as v1.4.8). All 14 entries must be
 // present so that user-initiated transactions to the remaining contracts are
 // correctly NOT skipped.
 var systemContractAddresses = []common.Address{
@@ -151,11 +163,17 @@ type RealTimer struct{}
 func (RealTimer) Now() int64 { return time.Now().UnixNano() }
 
 // stubChainContext satisfies core.ChainContext for ApplyTransaction without a
-// live blockchain. We pass a non-nil author to NewEVMBlockContext, so
-// Engine().Author() is never invoked. GetHeader is only consulted lazily by the
-// BLOCKHASH opcode for ancestors not yet cached; returning nil there causes
-// BLOCKHASH to yield zero, which is acceptable for benchmark replay.
-type stubChainContext struct{}
+// live blockchain. The Header lookups return nil; they are only consulted
+// lazily by the BLOCKHASH opcode for ancestors not yet cached, which yields
+// zero — acceptable for benchmark replay. Engine() returns nil because we pass
+// a non-nil author to NewEVMBlockContext, so Engine().Author() is never invoked.
+type stubChainContext struct {
+	cfg *params.ChainConfig
+}
 
-func (stubChainContext) Engine() consensus.Engine                    { return nil }
+func (s stubChainContext) Config() *params.ChainConfig               { return s.cfg }
+func (stubChainContext) CurrentHeader() *types.Header                { return nil }
 func (stubChainContext) GetHeader(common.Hash, uint64) *types.Header { return nil }
+func (stubChainContext) GetHeaderByNumber(uint64) *types.Header      { return nil }
+func (stubChainContext) GetHeaderByHash(common.Hash) *types.Header   { return nil }
+func (stubChainContext) Engine() consensus.Engine                    { return nil }

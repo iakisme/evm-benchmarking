@@ -8,13 +8,13 @@ import (
 
 func TestStateOpCounterCountsSloadSstore(t *testing.T) {
 	tr := NewStateOpCounter()
+	h := tr.Hooks()
 
-	// emulate a few SLOADs and SSTOREs via CaptureState callback
-	// scope is *vm.ScopeContext (concrete pointer); nil is fine because the counter ignores it
-	tr.CaptureState(0, vm.SLOAD, 0, 0, nil, nil, 0, nil)
-	tr.CaptureState(0, vm.SLOAD, 0, 0, nil, nil, 0, nil)
-	tr.CaptureState(0, vm.SSTORE, 0, 0, nil, nil, 0, nil)
-	tr.CaptureState(0, vm.ADD, 0, 0, nil, nil, 0, nil)
+	// emulate a few SLOADs and SSTOREs via the OnOpcode hook
+	h.OnOpcode(0, byte(vm.SLOAD), 0, 0, nil, nil, 0, nil)
+	h.OnOpcode(0, byte(vm.SLOAD), 0, 0, nil, nil, 0, nil)
+	h.OnOpcode(0, byte(vm.SSTORE), 0, 0, nil, nil, 0, nil)
+	h.OnOpcode(0, byte(vm.ADD), 0, 0, nil, nil, 0, nil)
 
 	r, w := tr.Counts()
 	if r != 2 {

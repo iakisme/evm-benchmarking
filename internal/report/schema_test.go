@@ -14,7 +14,7 @@ func TestResultRoundTripsJSON(t *testing.T) {
 			StartedAt:       time.Date(2026, 5, 2, 14, 30, 0, 0, time.UTC),
 			FinishedAt:      time.Date(2026, 5, 2, 15, 32, 11, 0, time.UTC),
 			BscbenchVersion: "v0.1.0",
-			BSCVersion:      "v1.4.8",
+			BSCVersion:      "v1.7.3",
 			InputHash:       "sha256:abc",
 			FromBlock:       40000000,
 			ToBlock:         40010000,
