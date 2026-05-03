@@ -3,8 +3,6 @@ package main
 import (
 	"runtime/debug"
 
-	// Import a lightweight BSC package so the module appears in debug.BuildInfo.Deps.
-	_ "github.com/ethereum/go-ethereum/params"
 	"github.com/spf13/cobra"
 )
 

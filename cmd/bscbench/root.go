@@ -9,6 +9,6 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	cmd.AddCommand(newVersionCmd(), newSysinfoCmd())
+	cmd.AddCommand(newVersionCmd(), newSysinfoCmd(), newReplayCmd())
 	return cmd
 }
