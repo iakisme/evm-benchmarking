@@ -42,8 +42,8 @@ func newReplayCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&input, "input", "", "Input directory (manifest.json + blocks.rlp + state/)")
 	cmd.Flags().StringVar(&outDir, "out-dir", "", "Output directory")
-	cmd.Flags().Uint64Var(&from, "from", 0, "Override manifest from_block (0 = use manifest)")
-	cmd.Flags().Uint64Var(&to, "to", 0, "Override manifest to_block (0 = use manifest)")
+	cmd.Flags().Uint64Var(&from, "from", 0, "(reserved, not yet implemented) Override manifest from_block")
+	cmd.Flags().Uint64Var(&to, "to", 0, "(reserved, not yet implemented) Override manifest to_block")
 	cmd.Flags().BoolVar(&skipWarmup, "skip-warmup", false, "Skip the warmup pass (debug only; results not comparable)")
 	cmd.Flags().StringVar(&workDirRoot, "work-dir", "", "Where to copy state for each pass (default: $TMPDIR/bscbench-workdir)")
 	return cmd
@@ -52,6 +52,10 @@ func newReplayCmd() *cobra.Command {
 func runReplay(input, outDir string, fromOverride, toOverride uint64, skipWarmup bool, workDirRoot string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	if fromOverride != 0 || toOverride != 0 {
+		return fmt.Errorf("--from/--to overrides are not yet implemented; remove them to replay the full manifest range")
+	}
 
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir out: %w", err)
@@ -62,10 +66,6 @@ func runReplay(input, outDir string, fromOverride, toOverride uint64, skipWarmup
 		return fmt.Errorf("corpus: %w", err)
 	}
 	defer c.Close()
-
-	if fromOverride != 0 || toOverride != 0 {
-		fmt.Fprintln(os.Stderr, "[bscbench] WARNING: --from/--to overrides selected; result is non-canonical")
-	}
 
 	startedAt := time.Now().UTC()
 
