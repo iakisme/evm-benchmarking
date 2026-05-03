@@ -47,9 +47,11 @@ func ApplyBlock(
 	gp := new(core.GasPool).AddGas(header.GasLimit)
 	chainCtx := stubChainContext{}
 
+	signer := types.MakeSigner(cfg, header.Number, header.Time)
+
 	t0 := timer.Now()
 	for i, tx := range txs {
-		if isSystemTx(tx) {
+		if isSystemTx(tx, header, signer) {
 			res.SystemTxSkipped++
 			continue
 		}
@@ -84,32 +86,59 @@ func ApplyBlock(
 	return res, nil
 }
 
-// isSystemTx detects BSC validator-rotation / system contract transactions by
-// checking the recipient against the well-known system contract addresses.
-func isSystemTx(tx *types.Transaction) bool {
+// isSystemTx mirrors BSC Parlia's IsSystemTransaction:
+//  1. tx.To() is a system contract address
+//  2. sender == header.Coinbase (validator is the sender)
+//  3. tx.GasPrice() == 0
+//
+// All three must hold; user-originated txs to system contracts (e.g.,
+// StakeHub.delegate()) must NOT be skipped.
+func isSystemTx(tx *types.Transaction, header *types.Header, signer types.Signer) bool {
 	if tx.To() == nil {
 		return false
 	}
 	to := *tx.To()
+	matched := false
 	for _, addr := range systemContractAddresses {
 		if to == addr {
-			return true
+			matched = true
+			break
 		}
 	}
-	return false
+	if !matched {
+		return false
+	}
+	if tx.GasPrice().Sign() != 0 {
+		return false
+	}
+	sender, err := types.Sender(signer, tx)
+	if err != nil {
+		// Bad signature — defer judgment to ApplyTransaction's own validation;
+		// don't skip.
+		return false
+	}
+	return sender == header.Coinbase
 }
 
-// systemContractAddresses are BSC's well-known system contracts. Source:
-// upstream BSC core/systemcontracts/const.go for the pinned BSC v1.4.8 release.
+// systemContractAddresses mirrors the systemContracts map in BSC Parlia
+// (consensus/parlia/parlia.go lines 86-101, v1.4.8). All 14 entries must be
+// present so that user-initiated transactions to the remaining contracts are
+// correctly NOT skipped.
 var systemContractAddresses = []common.Address{
 	common.HexToAddress("0x0000000000000000000000000000000000001000"), // ValidatorContract
 	common.HexToAddress("0x0000000000000000000000000000000000001001"), // SlashContract
 	common.HexToAddress("0x0000000000000000000000000000000000001002"), // SystemRewardContract
+	common.HexToAddress("0x0000000000000000000000000000000000001003"), // LightClientContract
 	common.HexToAddress("0x0000000000000000000000000000000000001004"), // TokenHubContract
 	common.HexToAddress("0x0000000000000000000000000000000000001005"), // RelayerIncentivizeContract
 	common.HexToAddress("0x0000000000000000000000000000000000001006"), // RelayerHubContract
 	common.HexToAddress("0x0000000000000000000000000000000000001007"), // GovHubContract
 	common.HexToAddress("0x0000000000000000000000000000000000002000"), // CrossChainContract
+	common.HexToAddress("0x0000000000000000000000000000000000002002"), // StakeHubContract
+	common.HexToAddress("0x0000000000000000000000000000000000002004"), // GovernorContract
+	common.HexToAddress("0x0000000000000000000000000000000000002005"), // GovTokenContract
+	common.HexToAddress("0x0000000000000000000000000000000000002006"), // TimelockContract
+	common.HexToAddress("0x0000000000000000000000000000000000003000"), // TokenRecoverPortalContract
 }
 
 // Timer is a small wrapper so tests can fake the monotonic clock.
