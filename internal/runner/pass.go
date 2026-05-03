@@ -2,7 +2,9 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -31,8 +33,8 @@ type PassResult struct {
 	WallSec   float64
 	GasUsed   uint64
 	BlockColl *metrics.BlockCollector // nil for warmup
-	Sampler   *metrics.ProcSampler    // nil for warmup
-	DBCounter *metrics.CountingDB     // nil for warmup
+	Sampler   *metrics.ProcSampler    // nil for warmup; caller must call Stop() to drain samples
+	DBCounter *metrics.CountingDB     // always set; cumulative read/write byte counters
 }
 
 // RunPass executes all blocks from the corpus against db.State, optionally
@@ -95,8 +97,11 @@ func RunPass(
 			return PassResult{}, err
 		}
 		blk, err := it.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		if err != nil {
-			break // EOF
+			return PassResult{}, fmt.Errorf("read block %d: %w", it.Count(), err)
 		}
 
 		dbReadBefore, dbWriteBefore := cdb.Counts()
@@ -116,7 +121,8 @@ func RunPass(
 				}
 			}
 			blockColl.Record(metrics.BlockEvent{
-				Number:          blk.NumberU64(),
+				Number: blk.NumberU64(),
+				// ApplyBlock invariant: SystemTxSkipped <= len(Transactions()), no underflow.
 				TxCount:         uint32(len(blk.Transactions())) - res.SystemTxSkipped,
 				RevertedTx:      reverted,
 				GasUsed:         res.UsedGas,
