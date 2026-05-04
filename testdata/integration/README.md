@@ -1,7 +1,7 @@
 # Integration Test Fixture
 
 The `cmd/bscbench` integration test (gated by `-tags=integration`) expects a
-small, real BSC corpus at:
+small BSC corpus at:
 
     testdata/integration/chapel-50blocks/
       manifest.json
@@ -10,16 +10,21 @@ small, real BSC corpus at:
         chaindata/
         ancient/
 
-This fixture is **not committed** to the repo (size, churn). To regenerate:
+This fixture is **not committed** to the repo (pebble metadata churns across
+regenerations). Build it locally with:
 
-1. Bring up a BSC chapel (testnet) node and snap-sync to a recent height.
-2. Stop at height N.
-3. Export 50 blocks: `geth --datadir=<dir> export blocks.rlp N N+50`
-4. Pack `chaindata/` and `ancient/` into `state/`.
-5. Generate `manifest.json` matching the expected schema (see
-   `internal/corpus/testdata/manifest_valid.json`).
-6. Compute `input_hash` as `sha256` over `blocks.rlp` and the tarred state.
+    go run ./scripts/prepare-fixture --out=testdata/integration/chapel-50blocks
+
+The script generates a synthetic 50-block chapel-compatible chain
+(chain_id=97, block heights well below any BSC fork) using
+`core.GenerateChain` with a faked ethash engine. It is purely structural —
+the goal is to exercise bscbench's pipeline (corpus loader, state DB open,
+ApplyBlock, metrics, report writers) end-to-end. It is **not** a check on
+real BSC mainnet behavior; for that, prepare a corpus from a real BSC node
+following the spec's input contract.
 
 Run the integration test:
 
-    go test -tags=integration ./cmd/bscbench/ -run TestReplayIntegrationChapel -v
+    go test -tags=integration -v ./cmd/bscbench/ -run TestReplayIntegrationChapel
+
+Without the fixture, the test self-skips with an `os.Stat` error message.
