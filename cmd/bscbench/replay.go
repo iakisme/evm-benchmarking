@@ -13,10 +13,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kai-w/bscbench/internal/corpus"
-	"github.com/kai-w/bscbench/internal/report"
-	"github.com/kai-w/bscbench/internal/runner"
-	"github.com/kai-w/bscbench/internal/sysinfo"
+	"github.com/iakisme/evm-benchmarking/internal/corpus"
+	"github.com/iakisme/evm-benchmarking/internal/report"
+	"github.com/iakisme/evm-benchmarking/internal/runner"
+	"github.com/iakisme/evm-benchmarking/internal/sysinfo"
 )
 
 func newReplayCmd() *cobra.Command {

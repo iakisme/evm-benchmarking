@@ -1,4 +1,4 @@
-module github.com/kai-w/bscbench
+module github.com/iakisme/evm-benchmarking
 
 go 1.25.0
 

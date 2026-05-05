@@ -3,7 +3,7 @@ package metrics
 import (
 	"sync"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/iakisme/evm-benchmarking/internal/report"
 )
 
 // BlockEvent is one block's contribution from the runner.

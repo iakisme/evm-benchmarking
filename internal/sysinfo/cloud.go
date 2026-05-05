@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/iakisme/evm-benchmarking/internal/report"
 )
 
 const probeTimeout = 500 * time.Millisecond

@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 	"strconv"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/iakisme/evm-benchmarking/internal/report"
 )
 
 func collectGo() report.GoInfo {

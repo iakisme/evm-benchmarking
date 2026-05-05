@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kai-w/bscbench/internal/sysinfo"
+	"github.com/iakisme/evm-benchmarking/internal/sysinfo"
 )
 
 func newSysinfoCmd() *cobra.Command {

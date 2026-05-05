@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/iakisme/evm-benchmarking/internal/report"
 )
 
 // ProcSampler periodically reads /proc/self/{stat,status,io} and emits ProcSample.

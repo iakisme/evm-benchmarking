@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/kai-w/bscbench/internal/chain"
-	"github.com/kai-w/bscbench/internal/corpus"
+	"github.com/iakisme/evm-benchmarking/internal/chain"
+	"github.com/iakisme/evm-benchmarking/internal/corpus"
 )
 
 // DoublePassConfig configures a double-pass benchmark run.

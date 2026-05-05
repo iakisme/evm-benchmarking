@@ -11,9 +11,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/triedb"
 
-	"github.com/kai-w/bscbench/internal/chain"
-	"github.com/kai-w/bscbench/internal/corpus"
-	"github.com/kai-w/bscbench/internal/metrics"
+	"github.com/iakisme/evm-benchmarking/internal/chain"
+	"github.com/iakisme/evm-benchmarking/internal/corpus"
+	"github.com/iakisme/evm-benchmarking/internal/metrics"
 )
 
 // PassConfig configures a single pass (warmup or measured).

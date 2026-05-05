@@ -1,0 +1,23 @@
+.git
+.github
+.claude
+.idea
+.vscode
+
+# Generated outputs
+results/
+bench-runs-*/
+dist/
+build/
+prepare-fixture
+bscbench
+
+# Generated fixtures (regenerate inside the container if needed)
+testdata/integration/chapel-bench/
+testdata/integration/chapel-smoke/
+testdata/integration/chapel-50blocks/
+testdata/integration/chapel-fixture/
+
+# Editor / OS detritus
+*.swp
+.DS_Store

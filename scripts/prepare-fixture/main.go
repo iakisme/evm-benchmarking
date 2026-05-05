@@ -37,18 +37,24 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethdb"
 	pebbledb "github.com/ethereum/go-ethereum/ethdb/pebble"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/triedb"
+	"github.com/ethereum/go-ethereum/triedb/pathdb"
+	"github.com/holiman/uint256"
 
-	"github.com/kai-w/bscbench/internal/corpus"
+	"github.com/iakisme/evm-benchmarking/internal/corpus"
 )
 
 const (
@@ -118,6 +124,7 @@ func main() {
 	out := flag.String("out", "testdata/integration/chapel-bench", "output directory")
 	nReplayFlag := flag.Int("blocks", defaultBlocks, "number of replay blocks")
 	txPerBlockFlag := flag.Int("tx-per-block", defaultTx, "transactions per replay block")
+	scheme := flag.String("scheme", "path", "state scheme: 'path' (PBSS, faster) or 'hash' (legacy)")
 	flag.Parse()
 
 	if *nReplayFlag <= 0 {
@@ -125,6 +132,9 @@ func main() {
 	}
 	if *txPerBlockFlag <= 0 {
 		die("invalid --tx-per-block", fmt.Errorf("must be > 0, got %d", *txPerBlockFlag))
+	}
+	if *scheme != "hash" && *scheme != "path" {
+		die("invalid --scheme", fmt.Errorf("must be 'hash' or 'path', got %q", *scheme))
 	}
 	nReplay := uint64(*nReplayFlag)
 	txPerBlock := *txPerBlockFlag
@@ -138,18 +148,6 @@ func main() {
 	ancient := filepath.Join(*out, "state", "ancient")
 	mustMkdirAll(chaindata)
 	mustMkdirAll(ancient)
-
-	kv, err := pebbledb.New(chaindata, 64, 64, "fixture/", false)
-	if err != nil {
-		die("pebble.New", err)
-	}
-	diskdb, err := rawdb.Open(kv, rawdb.OpenOptions{
-		Ancient:          ancient,
-		MetricsNamespace: "fixture/",
-	})
-	if err != nil {
-		die("rawdb.Open", err)
-	}
 
 	key, err := crypto.HexToECDSA(senderKeyHex)
 	if err != nil {
@@ -174,70 +172,159 @@ func main() {
 		Timestamp:  1,
 	}
 
-	tdb := triedb.NewDatabase(diskdb, triedb.HashDefaults)
-	genesisBlock, err := genesis.Commit(diskdb, tdb)
-	if err != nil {
-		die("genesis.Commit", err)
-	}
-	if err := tdb.Close(); err != nil {
-		die("triedb.Close (genesis)", err)
-	}
-
 	total := int(fromBlock + nReplay)
 	gasPrice := big.NewInt(1_000_000_000)
 	engine := ethash.NewFaker()
 
-	fmt.Fprintf(os.Stderr, "[prepare-fixture] generating %d blocks (%d heat-up + %d replay × (%d writer + %d transfer)) ...\n",
-		total, fromBlock, nReplay, writerTxs, transferTxs)
+	blockGenFn := func(i int, b *core.BlockGen) {
+		b.SetCoinbase(common.HexToAddress("0x000000000000000000000000000000000000bee5"))
+		signer := types.MakeSigner(chainCfg, b.Number(), b.Timestamp())
+		blockNum := uint64(i + 1)
+
+		if blockNum <= fromBlock {
+			tx, err := types.SignTx(types.NewTransaction(
+				b.TxNonce(sender), sender, big.NewInt(0), 21000, gasPrice, nil,
+			), signer, key)
+			if err != nil {
+				panic(fmt.Errorf("warmup tx %d: %w", i, err))
+			}
+			b.AddTx(tx)
+			return
+		}
+
+		for j := 0; j < writerTxs; j++ {
+			slot := blockNum*1024 + uint64(j)
+			data := make([]byte, 32)
+			binary.BigEndian.PutUint64(data[24:32], slot)
+			tx, err := types.SignTx(types.NewTransaction(
+				b.TxNonce(sender), writerContractAddr,
+				big.NewInt(0), 100_000, gasPrice, data,
+			), signer, key)
+			if err != nil {
+				panic(fmt.Errorf("writer tx block=%d j=%d: %w", blockNum, j, err))
+			}
+			b.AddTx(tx)
+		}
+		for j := 0; j < transferTxs; j++ {
+			recipient := common.BytesToAddress(deriveRecipient(blockNum, uint64(j)))
+			tx, err := types.SignTx(types.NewTransaction(
+				b.TxNonce(sender), recipient,
+				big.NewInt(1), 21000, gasPrice, nil,
+			), signer, key)
+			if err != nil {
+				panic(fmt.Errorf("transfer tx block=%d j=%d: %w", blockNum, j, err))
+			}
+			b.AddTx(tx)
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "[prepare-fixture] scheme=%s, generating %d blocks (%d heat-up + %d replay × (%d writer + %d transfer)) ...\n",
+		*scheme, total, fromBlock, nReplay, writerTxs, transferTxs)
 	t0 := time.Now()
 
-	blocks, _ := core.GenerateChain(chainCfg, genesisBlock, engine, diskdb, total,
-		func(i int, b *core.BlockGen) {
-			b.SetCoinbase(common.HexToAddress("0x000000000000000000000000000000000000bee5"))
-			signer := types.MakeSigner(chainCfg, b.Number(), b.Timestamp())
-			blockNum := uint64(i + 1)
-
-			// Heat-up blocks: one trivial self-transfer.
-			if blockNum <= fromBlock {
-				tx, err := types.SignTx(types.NewTransaction(
-					b.TxNonce(sender), sender, big.NewInt(0), 21000, gasPrice, nil,
-				), signer, key)
-				if err != nil {
-					panic(fmt.Errorf("warmup tx %d: %w", i, err))
-				}
-				b.AddTx(tx)
-				return
-			}
-
-			// Replay blocks: writer calls + transfers.
-			for j := 0; j < writerTxs; j++ {
-				slot := blockNum*1024 + uint64(j) // unique across replay blocks
-				data := make([]byte, 32)
-				binary.BigEndian.PutUint64(data[24:32], slot)
-				tx, err := types.SignTx(types.NewTransaction(
-					b.TxNonce(sender), writerContractAddr,
-					big.NewInt(0), 100_000, gasPrice, data,
-				), signer, key)
-				if err != nil {
-					panic(fmt.Errorf("writer tx block=%d j=%d: %w", blockNum, j, err))
-				}
-				b.AddTx(tx)
-			}
-			for j := 0; j < transferTxs; j++ {
-				// Recipient deterministic per (block, j); each is a fresh EOA
-				// the first time it appears, so subsequent same-recipient txs
-				// hit a "warm" account.
-				recipient := common.BytesToAddress(deriveRecipient(blockNum, uint64(j)))
-				tx, err := types.SignTx(types.NewTransaction(
-					b.TxNonce(sender), recipient,
-					big.NewInt(1), 21000, gasPrice, nil,
-				), signer, key)
-				if err != nil {
-					panic(fmt.Errorf("transfer tx block=%d j=%d: %w", blockNum, j, err))
-				}
-				b.AddTx(tx)
-			}
+	var (
+		blocks       []*types.Block
+		genesisBlock *types.Block
+	)
+	if *scheme == "hash" {
+		// Direct path: GenerateChain writes hash-scheme nodes straight into the
+		// final diskdb, since GenerateChain hard-codes triedb.HashDefaults.
+		kv, err := pebbledb.New(chaindata, 64, 64, "fixture/", false)
+		if err != nil {
+			die("pebble.New", err)
+		}
+		diskdb, err := rawdb.Open(kv, rawdb.OpenOptions{
+			Ancient:          ancient,
+			MetricsNamespace: "fixture/",
 		})
+		if err != nil {
+			die("rawdb.Open", err)
+		}
+		hashTdb := triedb.NewDatabase(diskdb, triedb.HashDefaults)
+		genesisBlock, err = genesis.Commit(diskdb, hashTdb)
+		if err != nil {
+			die("genesis.Commit (hash)", err)
+		}
+		if err := hashTdb.Close(); err != nil {
+			die("triedb.Close (hash)", err)
+		}
+		blocks, _ = core.GenerateChain(chainCfg, genesisBlock, engine, diskdb, total, blockGenFn)
+		if err := diskdb.Close(); err != nil {
+			die("diskdb.Close (hash)", err)
+		}
+	} else {
+		// Path scheme: GenerateChain forces hash, so use a TEMP hash diskdb
+		// to obtain the blocks, then replay only the heat-up phase
+		// (1..fromBlock) into the final path-scheme diskdb. Replay blocks
+		// fromBlock+1..total are just serialised to blocks.rlp; their state is
+		// reproduced by bscbench at run time.
+		tmpRoot, err := os.MkdirTemp("", "prepare-fixture-tmp-")
+		if err != nil {
+			die("temp dir", err)
+		}
+		defer os.RemoveAll(tmpRoot)
+		tmpKv, err := pebbledb.New(filepath.Join(tmpRoot, "chaindata"), 64, 64, "tmp/", false)
+		if err != nil {
+			die("temp pebble", err)
+		}
+		tmpDisk, err := rawdb.Open(tmpKv, rawdb.OpenOptions{
+			Ancient:          filepath.Join(tmpRoot, "ancient"),
+			MetricsNamespace: "tmp/",
+		})
+		if err != nil {
+			die("temp rawdb", err)
+		}
+		tmpTdb := triedb.NewDatabase(tmpDisk, triedb.HashDefaults)
+		genesisBlock, err = genesis.Commit(tmpDisk, tmpTdb)
+		if err != nil {
+			die("genesis.Commit (tmp)", err)
+		}
+		if err := tmpTdb.Close(); err != nil {
+			die("triedb.Close (tmp)", err)
+		}
+		blocks, _ = core.GenerateChain(chainCfg, genesisBlock, engine, tmpDisk, total, blockGenFn)
+		if err := tmpDisk.Close(); err != nil {
+			die("tmpDisk.Close", err)
+		}
+
+		// Now reproduce blocks[0..fromBlock-1] against a fresh path-scheme
+		// diskdb at the final destination.
+		fkv, err := pebbledb.New(chaindata, 64, 64, "fixture/", false)
+		if err != nil {
+			die("final pebble", err)
+		}
+		finalDisk, err := rawdb.Open(fkv, rawdb.OpenOptions{
+			Ancient:          ancient,
+			MetricsNamespace: "fixture/",
+		})
+		if err != nil {
+			die("final rawdb", err)
+		}
+		pathTdb := triedb.NewDatabase(finalDisk, &triedb.Config{PathDB: pathdb.Defaults})
+		genesisFinal, err := genesis.Commit(finalDisk, pathTdb)
+		if err != nil {
+			die("genesis.Commit (path)", err)
+		}
+		if genesisFinal.Root() != genesisBlock.Root() {
+			die("genesis root mismatch",
+				fmt.Errorf("tmp=%s vs final=%s", genesisBlock.Root().Hex(), genesisFinal.Root().Hex()))
+		}
+		replayHeatUp(chainCfg, finalDisk, pathTdb, genesisFinal, blocks[:fromBlock])
+		// Persist the in-memory diff layer hierarchy to disk. Without
+		// Journal, pathdb.Close discards everything still buffered in RAM,
+		// and the runner sees only the genesis state on the next open.
+		headRoot := blocks[fromBlock-1].Root()
+		if err := pathTdb.Journal(headRoot); err != nil {
+			die("pathTdb.Journal", err)
+		}
+		if err := pathTdb.Close(); err != nil {
+			die("pathTdb.Close", err)
+		}
+		if err := finalDisk.Close(); err != nil {
+			die("finalDisk.Close", err)
+		}
+	}
+
 	fmt.Fprintf(os.Stderr, "[prepare-fixture] generation done in %s (%.0f blocks/s)\n",
 		time.Since(t0).Round(time.Millisecond),
 		float64(total)/time.Since(t0).Seconds())
@@ -275,7 +362,7 @@ func main() {
 		BlockCount:              nReplay,
 		ExpectedStateRootAtFrom: stateRootAtFrom.Hex(),
 		ForkSchedule:            map[string]uint64{},
-		Generator:               fmt.Sprintf("synthetic-chapel-mixed-%dblocks-%dtx", nReplay, txPerBlock),
+		Generator:               fmt.Sprintf("synthetic-chapel-mixed-%s-%dblocks-%dtx", *scheme, nReplay, txPerBlock),
 		GeneratedAt:             time.Now().UTC().Format(time.RFC3339),
 		InputHash:               inputHash,
 		BSCVersionRecommended:   "v1.7.3",
@@ -286,10 +373,6 @@ func main() {
 	}
 	if err := os.WriteFile(filepath.Join(*out, "manifest.json"), mb, 0o644); err != nil {
 		die("write manifest", err)
-	}
-
-	if err := diskdb.Close(); err != nil {
-		die("diskdb.Close", err)
 	}
 
 	if err := validate(*out); err != nil {
@@ -305,6 +388,67 @@ func main() {
 	fmt.Printf("  input_hash = %s\n", inputHash)
 	fmt.Printf("  total size = %.2f MiB\n", float64(totalSize)/(1<<20))
 }
+
+// replayHeatUp re-executes blocks[0..len-1] (= chain blocks 1..fromBlock)
+// against the given path-scheme triedb so the on-disk state arrives at the
+// expected root[fromBlock]. Each block is committed with statedb.Commit +
+// triedb.Commit, and the resulting root is sanity-checked against the block
+// header's root.
+func replayHeatUp(cfg *params.ChainConfig, disk ethdb.Database, tdb *triedb.Database, genesisBlock *types.Block, blocks []*types.Block) {
+	chainCtx := stubChainContext{cfg: cfg}
+	parent := genesisBlock
+	for i, blk := range blocks {
+		statedb, err := state.New(parent.Root(), state.NewDatabase(tdb, nil))
+		if err != nil {
+			die(fmt.Sprintf("state.New block %d", i+1), err)
+		}
+		blockCtx := core.NewEVMBlockContext(blk.Header(), chainCtx, &blk.Header().Coinbase)
+		evm := vm.NewEVM(blockCtx, statedb, cfg, vm.Config{})
+		gp := new(core.GasPool).AddGas(blk.GasLimit())
+		var usedGas uint64
+		for j, tx := range blk.Transactions() {
+			statedb.SetTxContext(tx.Hash(), j)
+			if _, err := core.ApplyTransaction(evm, gp, statedb, blk.Header(), tx, &usedGas); err != nil {
+				die(fmt.Sprintf("ApplyTx block %d j %d", i+1, j), err)
+			}
+		}
+		// Mirror ethash.Faker.FinalizeAndAssemble: accumulate block reward
+		// to coinbase. Chapel chain config is post-Constantinople from genesis,
+		// so reward is the static 2-ETH constant. No uncles in our chain.
+		blockReward := uint256.NewInt(2e+18)
+		statedb.AddBalance(blk.Header().Coinbase, blockReward, tracing.BalanceIncreaseRewardMineBlock)
+
+		root, err := statedb.Commit(blk.NumberU64(),
+			cfg.IsEIP158(blk.Number()),
+			cfg.IsCancun(blk.Number(), blk.Time()))
+		if err != nil {
+			die(fmt.Sprintf("statedb.Commit block %d", i+1), err)
+		}
+		if err := tdb.Commit(root, false); err != nil {
+			die(fmt.Sprintf("tdb.Commit block %d", i+1), err)
+		}
+		if root != blk.Root() {
+			die("heat-up root mismatch",
+				fmt.Errorf("block %d: replayed=%s expected=%s", blk.NumberU64(), root.Hex(), blk.Root().Hex()))
+		}
+		parent = blk
+	}
+	_ = disk // disk is referenced via tdb; kept in signature for parity / future use
+}
+
+// stubChainContext satisfies core.ChainContext for the heat-up replay loop.
+// The Header lookups return nil — only consulted lazily by BLOCKHASH on
+// historical blocks not in cache, which yields zero — fine for fixture gen.
+type stubChainContext struct {
+	cfg *params.ChainConfig
+}
+
+func (s stubChainContext) Config() *params.ChainConfig               { return s.cfg }
+func (stubChainContext) CurrentHeader() *types.Header                { return nil }
+func (stubChainContext) GetHeader(common.Hash, uint64) *types.Header { return nil }
+func (stubChainContext) GetHeaderByNumber(uint64) *types.Header      { return nil }
+func (stubChainContext) GetHeaderByHash(common.Hash) *types.Header   { return nil }
+func (stubChainContext) Engine() consensus.Engine                    { return nil }
 
 // deriveRecipient returns a deterministic 20-byte address for (blockNum, idx).
 // We tag the high byte with 0xa0 so addresses don't collide with the system

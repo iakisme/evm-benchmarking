@@ -10,8 +10,9 @@
 /testdata/integration/chapel-bench/
 /testdata/integration/chapel-smoke/
 
-# Default bscbench output directory
+# Default bscbench output directory + multi-trial bench harness output
 /results/
+/bench-runs-*/
 
 # Test artifacts
 /coverage.out

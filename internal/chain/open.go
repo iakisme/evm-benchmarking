@@ -8,17 +8,21 @@ import (
 	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
 	pebbledb "github.com/ethereum/go-ethereum/ethdb/pebble"
-	"github.com/ethereum/go-ethereum/triedb"
 )
 
 // DB is the tuple of low-level handles bscbench needs.
+//
+// Note: we do NOT construct a triedb here. Under path-based state scheme
+// the triedb opens (and locks via FLOCK) the state-history freezer, and the
+// runner needs to construct its own triedb on top of a CountingDB wrapper
+// for byte-accounting. Two triedbs sharing the same on-disk freezer would
+// race for the lock; so we keep this layer thin and let the runner own the
+// triedb.
 type DB struct {
-	Path  string
-	Disk  ethdb.Database // raw key-value + ancient store
-	State state.Database // wraps Disk for state.New()
+	Path string
+	Disk ethdb.Database // raw key-value + ancient store
 }
 
 // Open opens the state database at <stateDir>. The directory layout follows
@@ -53,9 +57,7 @@ func Open(stateDir string) (*DB, error) {
 		return nil, fmt.Errorf("rawdb open: %w", err)
 	}
 
-	tdb := triedb.NewDatabase(disk, nil)
-	stateCache := state.NewDatabase(tdb, nil)
-	return &DB{Path: stateDir, Disk: disk, State: stateCache}, nil
+	return &DB{Path: stateDir, Disk: disk}, nil
 }
 
 func (db *DB) Close() error {

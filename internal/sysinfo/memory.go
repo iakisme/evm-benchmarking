@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/iakisme/evm-benchmarking/internal/report"
 )
 
 func collectMemory() (report.MemInfo, error) {

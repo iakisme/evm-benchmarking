@@ -4,7 +4,7 @@ package sysinfo
 import (
 	"context"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/iakisme/evm-benchmarking/internal/report"
 )
 
 // Collect returns a Sysinfo populated by inspecting the host. interestingPaths
