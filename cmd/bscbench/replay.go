@@ -21,35 +21,31 @@ import (
 
 func newReplayCmd() *cobra.Command {
 	var (
-		input       string
-		outDir      string
-		from, to    uint64
-		skipWarmup  bool
-		workDirRoot string
+		input           string
+		outDir          string
+		from, to        uint64
+		skipWarmup      bool
+		workDirRoot     string
+		samplerInterval time.Duration
 	)
 	cmd := &cobra.Command{
 		Use:   "replay",
 		Short: "Replay a fixed window of BSC blocks and record metrics",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if input == "" {
-				return fmt.Errorf("--input is required")
-			}
-			if outDir == "" {
-				return fmt.Errorf("--out-dir is required")
-			}
-			return runReplay(input, outDir, from, to, skipWarmup, workDirRoot)
+			return runReplay(input, outDir, from, to, skipWarmup, workDirRoot, samplerInterval)
 		},
 	}
-	cmd.Flags().StringVar(&input, "input", "", "Input directory (manifest.json + blocks.rlp + state/)")
-	cmd.Flags().StringVar(&outDir, "out-dir", "", "Output directory")
+	cmd.Flags().StringVar(&input, "input", "testdata/integration/chapel-bench", "Input directory (manifest.json + blocks.rlp + state/)")
+	cmd.Flags().StringVar(&outDir, "out-dir", "results", "Output directory")
 	cmd.Flags().Uint64Var(&from, "from", 0, "(reserved, not yet implemented) Override manifest from_block")
 	cmd.Flags().Uint64Var(&to, "to", 0, "(reserved, not yet implemented) Override manifest to_block")
 	cmd.Flags().BoolVar(&skipWarmup, "skip-warmup", false, "Skip the warmup pass (debug only; results not comparable)")
 	cmd.Flags().StringVar(&workDirRoot, "work-dir", "", "Where to copy state for each pass (default: $TMPDIR/bscbench-workdir)")
+	cmd.Flags().DurationVar(&samplerInterval, "sampler-interval", time.Second, "/proc sampler period; canonical runs use 1s, short runs may want 50ms")
 	return cmd
 }
 
-func runReplay(input, outDir string, fromOverride, toOverride uint64, skipWarmup bool, workDirRoot string) error {
+func runReplay(input, outDir string, fromOverride, toOverride uint64, skipWarmup bool, workDirRoot string, samplerInterval time.Duration) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -70,8 +66,9 @@ func runReplay(input, outDir string, fromOverride, toOverride uint64, skipWarmup
 	startedAt := time.Now().UTC()
 
 	dpRes, err := runner.RunDoublePass(ctx, c, runner.DoublePassConfig{
-		WorkDirRoot: workDirRoot,
-		Skip:        skipWarmup,
+		WorkDirRoot:     workDirRoot,
+		Skip:            skipWarmup,
+		SamplerInterval: samplerInterval,
 	})
 	if err != nil {
 		return fmt.Errorf("double pass: %w", err)

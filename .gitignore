@@ -4,8 +4,14 @@
 /dist/
 /build/
 
-# Generated integration fixture (regenerate via scripts/prepare-fixture)
+# Generated integration / bench fixtures (regenerate via scripts/prepare-fixture)
 /testdata/integration/chapel-50blocks/
+/testdata/integration/chapel-fixture/
+/testdata/integration/chapel-bench/
+/testdata/integration/chapel-smoke/
+
+# Default bscbench output directory
+/results/
 
 # Test artifacts
 /coverage.out

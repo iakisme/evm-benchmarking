@@ -7,9 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
-const integrationFixtureDir = "../../testdata/integration/chapel-50blocks"
+const integrationFixtureDir = "../../testdata/integration/chapel-smoke"
 
 func TestReplayIntegrationChapel(t *testing.T) {
 	if _, err := os.Stat(integrationFixtureDir); err != nil {
@@ -17,7 +18,7 @@ func TestReplayIntegrationChapel(t *testing.T) {
 	}
 
 	out := t.TempDir()
-	err := runReplay(integrationFixtureDir, out, 0, 0, true, filepath.Join(out, "work"))
+	err := runReplay(integrationFixtureDir, out, 0, 0, true, filepath.Join(out, "work"), 50*time.Millisecond)
 	if err != nil {
 		t.Fatalf("runReplay: %v", err)
 	}

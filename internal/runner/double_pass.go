@@ -13,8 +13,9 @@ import (
 
 // DoublePassConfig configures a double-pass benchmark run.
 type DoublePassConfig struct {
-	WorkDirRoot string
-	Skip        bool // if true, skip the warmup pass entirely (debug only)
+	WorkDirRoot     string
+	Skip            bool          // if true, skip the warmup pass entirely (debug only)
+	SamplerInterval time.Duration // /proc sampler period; 0 falls back to PassConfig default (1 s)
 }
 
 func (c *DoublePassConfig) applyDefaults() {
@@ -59,7 +60,7 @@ func RunDoublePass(
 		if err != nil {
 			return out, fmt.Errorf("open warmup db: %w", err)
 		}
-		warmRes, err := RunPass(ctx, db, c, PassConfig{Measured: false})
+		warmRes, err := RunPass(ctx, db, c, PassConfig{Measured: false, SamplerInterval: cfg.SamplerInterval})
 		_ = db.Close()
 		if err != nil {
 			return out, fmt.Errorf("warmup pass: %w", err)
@@ -84,7 +85,7 @@ func RunDoublePass(
 		return out, fmt.Errorf("open measured db: %w", err)
 	}
 	defer db.Close()
-	measRes, err := RunPass(ctx, db, c, PassConfig{Measured: true})
+	measRes, err := RunPass(ctx, db, c, PassConfig{Measured: true, SamplerInterval: cfg.SamplerInterval})
 	if err != nil {
 		return out, fmt.Errorf("measured pass: %w", err)
 	}
