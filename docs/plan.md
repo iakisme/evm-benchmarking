@@ -1,8 +1,10 @@
 # bscbench Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Historical: this is the task-by-task plan that produced the v0.1 binary.
+> Steps use checkbox (`- [ ]`) syntax. Kept for transparency, not as a
+> guide to current code.
 
-**Goal:** Build the `bscbench` Go binary described in `docs/superpowers/specs/2026-05-02-bsc-benchmark-design.md` — a single-host tool that replays a 10,000-block BSC window with double-pass warmup and emits EVM + system metrics to JSON/CSV.
+**Goal:** Build the `bscbench` Go binary described in `docs/design.md` — a single-host tool that replays a 10,000-block BSC window with double-pass warmup and emits EVM + system metrics to JSON/CSV.
 
 **Architecture:** Single Go module, single binary with three subcommands (`replay`, `sysinfo`, `version`). BSC imported as a Go dependency. Consensus bypassed; blocks executed via a stripped `core.StateProcessor`-equivalent path. Output is local files only.
 
@@ -86,8 +88,8 @@ Single-host benchmark tool that replays a fixed 10,000-block BSC window and
 emits EVM and system metrics to JSON/CSV. Designed to compare EVM execution
 performance across cloud VM configurations.
 
-See `docs/superpowers/specs/2026-05-02-bsc-benchmark-design.md` for the design
-spec and `docs/superpowers/plans/2026-05-02-bsc-benchmark.md` for the
+See `docs/design.md` for the design
+spec and `docs/plan.md` for the
 implementation plan.
 
 ## Build

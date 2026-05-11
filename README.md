@@ -4,7 +4,7 @@ Single-host benchmark tool that replays a fixed BSC block window against a
 local state snapshot and emits EVM-layer and system-layer metrics to JSON
 and CSV. Designed for comparing EVM execution performance across cloud VM
 configurations: run the same binary on the same input on two machines,
-diff the result.json files.
+diff the `result.json` files.
 
 This is **not** a sync benchmark, **not** a network benchmark, and **not**
 a wall-clock benchmark of an entire BSC node. It measures EVM + StateDB
@@ -14,7 +14,25 @@ throughput on a stripped, consensus-bypassed execution path.
 
 - Tested against `github.com/bnb-chain/bsc v1.7.3`
 - Go 1.25+
-- Linux x86_64
+- Linux x86_64 (other Unix-likes likely work but unverified)
+
+## What it measures
+
+Per replay block bscbench records:
+
+- **`exec_ns`** — wall time from first `ApplyTransaction` to `IntermediateRoot` return
+- **`trie_commit_ns`** — wall time of the per-block `IntermediateRoot` alone
+- **`state_read_count` / `state_write_count`** — SLOAD / SSTORE counts (via `vm.Config.Tracer`)
+- **`db_read_bytes` / `db_write_bytes`** — bytes through a wrapper around `ethdb.Database`
+
+Plus run-level aggregates:
+
+- **`mgasps`** = `total_gas_used / total_wall_sec / 1e6`
+- p50/p95/p99 percentiles of every per-block metric above
+- /proc-sampled CPU%, RSS peak, disk read/write totals at the configured period
+
+Two runs with the same `input_hash` and same canonical mode produce
+directly comparable `result.json` files.
 
 ## Install
 
@@ -31,8 +49,16 @@ curl -L https://github.com/iakisme/evm-benchmarking/releases/download/vX.Y.Z/bsc
 ### Container
 
 ```bash
+# Pull
 docker pull ghcr.io/iakisme/evm-benchmarking:latest
-docker run --rm -v "$PWD:/work" -w /work ghcr.io/iakisme/evm-benchmarking:latest replay
+
+# Run against a corpus on the host. --input is required because the
+# container has no default fixture inside.
+docker run --rm \
+    -v "$PWD/my-corpus:/in:ro" \
+    -v "$PWD/results:/out" \
+    ghcr.io/iakisme/evm-benchmarking:latest \
+    replay --input=/in --out-dir=/out
 ```
 
 ### From source
@@ -41,7 +67,7 @@ docker run --rm -v "$PWD:/work" -w /work ghcr.io/iakisme/evm-benchmarking:latest
 go install github.com/iakisme/evm-benchmarking/cmd/bscbench@latest
 ```
 
-or
+or build inside a checkout:
 
 ```bash
 git clone https://github.com/iakisme/evm-benchmarking
@@ -52,16 +78,22 @@ go build -o bscbench ./cmd/bscbench
 ## Quickstart
 
 ```bash
-# 1. Generate a synthetic 40k-block fixture (~2 min, ~92 MiB on disk)
+git clone https://github.com/iakisme/evm-benchmarking
+cd evm-benchmarking
+
+# 1. Build the binary (or use `go run` below)
+go build -o bscbench ./cmd/bscbench
+
+# 2. Generate a synthetic 40k-block fixture (~2 min, ~92 MiB on disk)
 go run ./scripts/prepare-fixture
 
-# 2. Run the canonical double-pass replay (~6 min on a modern x86)
+# 3. Run the canonical double-pass replay (~6 min on a modern x86)
 ./bscbench replay
 # → results/result.json + blocks.csv + proc_samples.csv
 ```
 
 `bscbench replay` defaults to `--input=testdata/integration/chapel-bench`
-and `--out-dir=results`. Override with `--input=<dir>` for a real corpus.
+and `--out-dir=results`. Override `--input=<dir>` for a real corpus.
 
 For a quick local probe without the warmup pass:
 
@@ -105,9 +137,10 @@ go run ./scripts/prepare-fixture --blocks=200 --tx-per-block=2 \
 ```
 
 Real-mainnet replay needs a state snapshot exported from a BSC node — the
-data preparation is out of scope for this tool. The spec under
-`docs/superpowers/specs/2026-05-02-bsc-benchmark-design.md` describes the
-end-to-end intended workflow.
+data preparation step is out of scope for this tool; only the input
+contract above is. See [`docs/design.md`](docs/design.md) for the original
+end-to-end design and [`docs/plan.md`](docs/plan.md) for the implementation
+plan (historical, captured at time of v0.1 build).
 
 ## Output
 
@@ -115,33 +148,40 @@ end-to-end intended workflow.
 |---|---|
 | `result.json` | run summary, sysinfo, aggregated metrics, schema_version |
 | `blocks.csv` | per-block: gas, exec_ns, trie_commit_ns, SLOAD/SSTORE counts, IO bytes |
-| `proc_samples.csv` | 1 Hz (or `--sampler-interval=...`) sampled CPU%, RSS, /proc/self/io |
-
-Two runs with the same `input_hash` and same canonical mode produce
-directly comparable result.json files.
+| `proc_samples.csv` | sampled CPU%, RSS, `/proc/self/io` at `--sampler-interval` |
 
 ## Reference perf
 
-AMD Ryzen 9 8945HS · 16 logical cores · NVMe · Linux 6.14, Go 1.25, BSC v1.7.3
-40,000-block synthetic fixture (10 cold-SSTORE writers + 5 transfers per block):
+The numbers below come from a 40,000-block **synthetic** fixture
+(10 cold-SSTORE writer-contract calls + 5 fresh-account transfers per
+block) on AMD Ryzen 9 8945HS · 16 logical cores · NVMe · Linux 6.14,
+Go 1.25, BSC v1.7.3, 10 trials each:
 
-| scheme | mgasps (mean ± std, n=10) | wall (canonical) | fixture size |
+| scheme | mgasps (mean ± std) | wall (canonical) | fixture size |
 |---|---:|---:|---:|
 | hash | 126.0 ± 5.2 | ~6 min | 1.5 GiB |
 | path | 122.6 ± 3.5 | ~6 min | **92 MiB** |
 
-For real BSC mainnet workloads (mixed cold/warm SSTORE, contract calls,
-event-heavy txs), expect 2–3× higher mgasps on the same hardware. The
-synthetic above intentionally stresses the cold-write trie-growth path.
+This synthetic stresses the **cold-write trie-growth path**:
+every SSTORE writes a brand-new slot, so the trie grows monotonically
+and trie commit dominates per-block time. Real BSC mainnet workloads
+have a much higher hot-modify ratio, fewer cold creates, and richer
+opcode mixes — they typically run faster per gas on the same hardware
+because trie commit takes constant-ish time once the state is stable.
+**Don't infer mainnet capacity from this number.**
 
 ## License
 
 LGPL-3.0-or-later. See [`LICENSE`](LICENSE) and [`LICENSE.GPL`](LICENSE.GPL).
 
-This project links against `github.com/bnb-chain/bsc` (LGPL-3.0), so
-distributed binaries inherit the LGPL-3.0 obligations: source must be
-made available, and downstream consumers must remain able to relink with
-a modified BSC.
+This project statically links against `github.com/bnb-chain/bsc`, which
+is itself LGPL-3.0. Distributed binaries inherit LGPL-3.0 obligations:
+source must be made available, and downstream consumers must remain able
+to relink with a modified BSC.
+
+`bsc`, `BNB Smart Chain` and related names are referenced descriptively
+in this project as the blockchain it benchmarks; the project is not
+affiliated with or endorsed by BNB Chain.
 
 ## Layout
 
@@ -155,5 +195,13 @@ internal/
   runner/            # double-pass coordinator (warmup → measured)
   sysinfo/           # host inventory (CPU, mem, disk, cloud metadata)
 scripts/prepare-fixture/   # synthetic corpus generator
-docs/superpowers/    # design spec + implementation plan (historical)
+docs/design.md       # design spec
+docs/plan.md         # implementation plan (historical)
 ```
+
+## Contributing
+
+Bug reports and small PRs welcome. For larger changes, open an issue
+first to talk through the approach — the project intentionally keeps a
+narrow scope (single-host EVM benchmark; no orchestration, no sync, no
+aggregation).
