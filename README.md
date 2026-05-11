@@ -1,4 +1,4 @@
-# bscbench
+# evmbench
 
 Single-host benchmark tool that replays a fixed BSC block window against a
 local state snapshot and emits EVM-layer and system-layer metrics to JSON
@@ -18,7 +18,7 @@ throughput on a stripped, consensus-bypassed execution path.
 
 ## What it measures
 
-Per replay block bscbench records:
+Per replay block evmbench records:
 
 - **`exec_ns`** — wall time from first `ApplyTransaction` to `IntermediateRoot` return
 - **`trie_commit_ns`** — wall time of the per-block `IntermediateRoot` alone
@@ -41,9 +41,9 @@ directly comparable `result.json` files.
 Grab a binary from [Releases](https://github.com/iakisme/evm-benchmarking/releases):
 
 ```bash
-curl -L https://github.com/iakisme/evm-benchmarking/releases/download/vX.Y.Z/bscbench-vX.Y.Z-linux-amd64.tar.gz \
+curl -L https://github.com/iakisme/evm-benchmarking/releases/download/vX.Y.Z/evmbench-vX.Y.Z-linux-amd64.tar.gz \
     | tar -xz
-./bscbench-vX.Y.Z-linux-amd64/bscbench version
+./evmbench-vX.Y.Z-linux-amd64/evmbench version
 ```
 
 ### Container
@@ -64,7 +64,7 @@ docker run --rm \
 ### From source
 
 ```bash
-go install github.com/iakisme/evm-benchmarking/cmd/bscbench@latest
+go install github.com/iakisme/evm-benchmarking/cmd/evmbench@latest
 ```
 
 or build inside a checkout:
@@ -72,7 +72,7 @@ or build inside a checkout:
 ```bash
 git clone https://github.com/iakisme/evm-benchmarking
 cd evm-benchmarking
-go build -o bscbench ./cmd/bscbench
+go build -o evmbench ./cmd/evmbench
 ```
 
 ## Quickstart
@@ -82,38 +82,38 @@ git clone https://github.com/iakisme/evm-benchmarking
 cd evm-benchmarking
 
 # 1. Build the binary (or use `go run` below)
-go build -o bscbench ./cmd/bscbench
+go build -o evmbench ./cmd/evmbench
 
 # 2. Generate a synthetic 40k-block fixture (~2 min, ~92 MiB on disk)
 go run ./scripts/prepare-fixture
 
 # 3. Run the canonical double-pass replay (~6 min on a modern x86)
-./bscbench replay
+./evmbench replay
 # → results/result.json + blocks.csv + proc_samples.csv
 ```
 
-`bscbench replay` defaults to `--input=testdata/integration/chapel-bench`
+`evmbench replay` defaults to `--input=testdata/integration/chapel-bench`
 and `--out-dir=results`. Override `--input=<dir>` for a real corpus.
 
 For a quick local probe without the warmup pass:
 
 ```bash
-./bscbench replay --skip-warmup --sampler-interval=50ms
+./evmbench replay --skip-warmup --sampler-interval=50ms
 ```
 
 ## Subcommands
 
 ```
-bscbench version                        # version of bscbench, BSC dep, Go
-bscbench sysinfo --out=sysinfo.json     # one-shot host inventory
-bscbench replay  [flags]                # replay a fixed block window
+evmbench version                        # version of evmbench, BSC dep, Go
+evmbench sysinfo --out=sysinfo.json     # one-shot host inventory
+evmbench replay  [flags]                # replay a fixed block window
 ```
 
-`bscbench replay --help` lists every flag.
+`evmbench replay --help` lists every flag.
 
 ## Input contract
 
-`bscbench replay --input=<dir>` expects:
+`evmbench replay --input=<dir>` expects:
 
 ```
 <input-dir>/
@@ -186,7 +186,7 @@ affiliated with or endorsed by BNB Chain.
 ## Layout
 
 ```
-cmd/bscbench/        # CLI: version / sysinfo / replay
+cmd/evmbench/        # CLI: version / sysinfo / replay
 internal/
   chain/             # consensus-bypassed BSC state DB + ApplyBlock
   corpus/            # input loader (manifest + blocks.rlp + state/)

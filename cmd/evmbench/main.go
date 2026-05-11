@@ -17,7 +17,7 @@ func main() {
 		os.Stderr, log.LevelWarn, false /*useColor*/)))
 
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "bscbench:", err)
+		fmt.Fprintln(os.Stderr, "evmbench:", err)
 		os.Exit(1)
 	}
 }

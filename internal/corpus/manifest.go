@@ -1,4 +1,4 @@
-// Package corpus loads and validates the bscbench input directory.
+// Package corpus loads and validates the evmbench input directory.
 package corpus
 
 import (
@@ -11,7 +11,7 @@ import (
 
 const ManifestFileName = "manifest.json"
 
-// Manifest describes the contents of a bscbench corpus directory.
+// Manifest describes the contents of a evmbench corpus directory.
 type Manifest struct {
 	SchemaVersion           string            `json:"schema_version"`
 	ChainID                 uint64            `json:"chain_id"`

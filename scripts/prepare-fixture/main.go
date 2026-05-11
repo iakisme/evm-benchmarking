@@ -1,7 +1,7 @@
 // prepare-fixture builds a synthetic BSC corpus suitable for the integration
-// test (cmd/bscbench/replay_integration_test.go) and for local performance
-// runs of bscbench. With default flags it produces a fixture sized so that
-// `bscbench replay` (canonical double-pass) runs ~5 minutes total.
+// test (cmd/evmbench/replay_integration_test.go) and for local performance
+// runs of evmbench. With default flags it produces a fixture sized so that
+// `evmbench replay` (canonical double-pass) runs ~5 minutes total.
 //
 // Run from the repo root:
 //
@@ -64,7 +64,7 @@ const (
 
 	senderKeyHex = "b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291"
 
-	// Default block count is calibrated so that `bscbench replay` (canonical
+	// Default block count is calibrated so that `evmbench replay` (canonical
 	// double-pass) completes in roughly 5 minutes wall time on a modern x86
 	// desktop (AMD Ryzen 9-class, NVMe). Each pass ≈ 2.5 min.
 	//
@@ -257,7 +257,7 @@ func main() {
 		// to obtain the blocks, then replay only the heat-up phase
 		// (1..fromBlock) into the final path-scheme diskdb. Replay blocks
 		// fromBlock+1..total are just serialised to blocks.rlp; their state is
-		// reproduced by bscbench at run time.
+		// reproduced by evmbench at run time.
 		tmpRoot, err := os.MkdirTemp("", "prepare-fixture-tmp-")
 		if err != nil {
 			die("temp dir", err)

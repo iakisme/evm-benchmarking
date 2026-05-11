@@ -20,7 +20,7 @@ func CopyState(src, dst string) error {
 	if err := tryReflinkCopy(src, dst); err == nil {
 		return nil
 	} else {
-		fmt.Fprintf(os.Stderr, "bscbench: reflink copy failed (%v), falling back to full copy\n", err)
+		fmt.Fprintf(os.Stderr, "evmbench: reflink copy failed (%v), falling back to full copy\n", err)
 	}
 	return walkCopy(src, dst)
 }

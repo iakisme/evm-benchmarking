@@ -27,7 +27,7 @@ func TestProcSamplerStartsAndStops(t *testing.T) {
 func TestParseSelfStat(t *testing.T) {
 	// fields: pid, comm, state, ppid, ..., utime(14), stime(15), ...
 	// Synthetic line covering enough fields to extract utime/stime.
-	line := "1234 (bscbench) S 1 1234 1234 0 -1 4194304 100 0 0 0 1500 700 0 0 20 0 1 0 1 0 0\n"
+	line := "1234 (evmbench) S 1 1234 1234 0 -1 4194304 100 0 0 0 1500 700 0 0 20 0 1 0 1 0 0\n"
 	utime, stime, err := parseSelfStat(line)
 	if err != nil {
 		t.Fatalf("parse: %v", err)

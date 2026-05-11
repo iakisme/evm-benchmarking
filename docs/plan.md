@@ -1,10 +1,10 @@
-# bscbench Implementation Plan
+# evmbench Implementation Plan
 
 > Historical: this is the task-by-task plan that produced the v0.1 binary.
 > Steps use checkbox (`- [ ]`) syntax. Kept for transparency, not as a
 > guide to current code.
 
-**Goal:** Build the `bscbench` Go binary described in `docs/design.md` — a single-host tool that replays a 10,000-block BSC window with double-pass warmup and emits EVM + system metrics to JSON/CSV.
+**Goal:** Build the `evmbench` Go binary described in `docs/design.md` — a single-host tool that replays a 10,000-block BSC window with double-pass warmup and emits EVM + system metrics to JSON/CSV.
 
 **Architecture:** Single Go module, single binary with three subcommands (`replay`, `sysinfo`, `version`). BSC imported as a Go dependency. Consensus bypassed; blocks executed via a stripped `core.StateProcessor`-equivalent path. Output is local files only.
 
@@ -30,14 +30,14 @@
 - Create: `go.mod`
 - Create: `.gitignore`
 - Modify: `README.md`
-- Create: `cmd/bscbench/main.go`
+- Create: `cmd/evmbench/main.go`
 
 - [ ] **Step 1: Initialize the Go module**
 
 Run from repo root:
 
 ```bash
-go mod init github.com/kai-w/bscbench
+go mod init github.com/kai-w/evmbench
 ```
 
 Expected: creates `go.mod` with module path and Go directive.
@@ -47,7 +47,7 @@ Expected: creates `go.mod` with module path and Go directive.
 Edit `go.mod` to:
 
 ```
-module github.com/kai-w/bscbench
+module github.com/kai-w/evmbench
 
 go 1.22
 ```
@@ -58,7 +58,7 @@ Write `.gitignore`:
 
 ```
 # Build artifacts
-/bscbench
+/evmbench
 /dist/
 /build/
 
@@ -82,7 +82,7 @@ Write `.gitignore`:
 Replace contents of `README.md` with:
 
 ```markdown
-# bscbench
+# evmbench
 
 Single-host benchmark tool that replays a fixed 10,000-block BSC window and
 emits EVM and system metrics to JSON/CSV. Designed to compare EVM execution
@@ -94,18 +94,18 @@ implementation plan.
 
 ## Build
 
-    go build -o bscbench ./cmd/bscbench
+    go build -o evmbench ./cmd/evmbench
 
 ## Usage
 
-    bscbench version
-    bscbench sysinfo --out=sysinfo.json
-    bscbench replay  --input=<dir> --out-dir=<dir>
+    evmbench version
+    evmbench sysinfo --out=sysinfo.json
+    evmbench replay  --input=<dir> --out-dir=<dir>
 ```
 
 - [ ] **Step 5: Create the binary entry point**
 
-Write `cmd/bscbench/main.go`:
+Write `cmd/evmbench/main.go`:
 
 ```go
 package main
@@ -117,7 +117,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "bscbench:", err)
+		fmt.Fprintln(os.Stderr, "evmbench:", err)
 		os.Exit(1)
 	}
 }
@@ -137,7 +137,7 @@ If you see `undefined: newRootCmd` — good, that's expected. Move on.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add go.mod .gitignore README.md cmd/bscbench/main.go
+git add go.mod .gitignore README.md cmd/evmbench/main.go
 git commit -m "Bootstrap Go module and binary entry point"
 ```
 
@@ -147,7 +147,7 @@ git commit -m "Bootstrap Go module and binary entry point"
 
 **Files:**
 - Modify: `go.mod`, `go.sum`
-- Create: `cmd/bscbench/root.go`
+- Create: `cmd/evmbench/root.go`
 
 - [ ] **Step 1: Add cobra dependency**
 
@@ -162,7 +162,7 @@ Expected: `go.mod` and `go.sum` updated. `go.sum` newly created.
 
 - [ ] **Step 2: Write the root command**
 
-Write `cmd/bscbench/root.go`:
+Write `cmd/evmbench/root.go`:
 
 ```go
 package main
@@ -171,7 +171,7 @@ import "github.com/spf13/cobra"
 
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "bscbench",
+		Use:           "evmbench",
 		Short:         "BSC EVM benchmark tool",
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -191,12 +191,12 @@ Expected: FAIL with `undefined: newVersionCmd`. Move to Task 3.
 ### Task 3: Add `version` subcommand
 
 **Files:**
-- Create: `cmd/bscbench/version.go`
-- Create: `cmd/bscbench/version_test.go`
+- Create: `cmd/evmbench/version.go`
+- Create: `cmd/evmbench/version_test.go`
 
 - [ ] **Step 1: Write the failing test**
 
-Write `cmd/bscbench/version_test.go`:
+Write `cmd/evmbench/version_test.go`:
 
 ```go
 package main
@@ -218,8 +218,8 @@ func TestVersionCommand(t *testing.T) {
 	}
 
 	out := buf.String()
-	if !strings.Contains(out, "bscbench") {
-		t.Errorf("expected output to mention bscbench, got %q", out)
+	if !strings.Contains(out, "evmbench") {
+		t.Errorf("expected output to mention evmbench, got %q", out)
 	}
 	if !strings.Contains(out, "bsc=") {
 		t.Errorf("expected output to include bsc dependency version, got %q", out)
@@ -229,12 +229,12 @@ func TestVersionCommand(t *testing.T) {
 
 - [ ] **Step 2: Run the test, verify it fails**
 
-Run: `go test ./cmd/bscbench/ -run TestVersionCommand -v`
+Run: `go test ./cmd/evmbench/ -run TestVersionCommand -v`
 Expected: FAIL — `undefined: newVersionCmd`.
 
 - [ ] **Step 3: Implement `version`**
 
-Write `cmd/bscbench/version.go`:
+Write `cmd/evmbench/version.go`:
 
 ```go
 package main
@@ -251,9 +251,9 @@ var Version = "dev"
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
-		Short: "Print bscbench and BSC dependency versions",
+		Short: "Print evmbench and BSC dependency versions",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cmd.Printf("bscbench=%s bsc=%s go=%s\n",
+			cmd.Printf("evmbench=%s bsc=%s go=%s\n",
 				Version, bscDepVersion(), runtimeGoVersion())
 			return nil
 		},
@@ -284,7 +284,7 @@ func runtimeGoVersion() string {
 
 - [ ] **Step 4: Run the test, verify it passes**
 
-Run: `go test ./cmd/bscbench/ -run TestVersionCommand -v`
+Run: `go test ./cmd/evmbench/ -run TestVersionCommand -v`
 Expected: PASS.
 
 - [ ] **Step 5: Smoke test the binary**
@@ -292,19 +292,19 @@ Expected: PASS.
 Run:
 
 ```bash
-go run ./cmd/bscbench version
+go run ./cmd/evmbench version
 ```
 
 Expected stdout:
 
 ```
-bscbench=dev bsc=none go=go1.22.x
+evmbench=dev bsc=none go=go1.22.x
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add cmd/bscbench/root.go cmd/bscbench/version.go cmd/bscbench/version_test.go go.mod go.sum
+git add cmd/evmbench/root.go cmd/evmbench/version.go cmd/evmbench/version_test.go go.mod go.sum
 git commit -m "Add cobra root and version subcommand"
 ```
 
@@ -388,7 +388,7 @@ Expected: FAIL — `undefined: Result`.
 Write `internal/report/schema.go`:
 
 ```go
-// Package report defines the on-disk output schema for bscbench runs.
+// Package report defines the on-disk output schema for evmbench runs.
 package report
 
 import "time"
@@ -407,7 +407,7 @@ type RunMeta struct {
 	ID              string    `json:"id"`
 	StartedAt       time.Time `json:"started_at"`
 	FinishedAt      time.Time `json:"finished_at"`
-	BscbenchVersion string    `json:"bscbench_version"`
+	BscbenchVersion string    `json:"evmbench_version"`
 	BSCVersion      string    `json:"bsc_version"`
 	InputHash       string    `json:"input_hash"`
 	FromBlock       uint64    `json:"from_block"`
@@ -641,7 +641,7 @@ Write `internal/report/testdata/result_golden.json` (the JSON the writer should 
     "id": "2026-05-02T14-30-00Z_bsc10k_host_abc12345",
     "started_at": "2026-05-02T14:30:00Z",
     "finished_at": "2026-05-02T15:32:11Z",
-    "bscbench_version": "v0.1.0",
+    "evmbench_version": "v0.1.0",
     "bsc_version": "v1.4.8",
     "input_hash": "sha256:abc",
     "from_block": 40000000,
@@ -1098,7 +1098,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/kai-w/evmbench/internal/report"
 )
 
 func collectHost() (report.HostInfo, error) {
@@ -1269,7 +1269,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/kai-w/evmbench/internal/report"
 )
 
 // flagsOfInterest is the small subset that matters for EVM perf comparison.
@@ -1444,7 +1444,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/kai-w/evmbench/internal/report"
 )
 
 func collectMemory() (report.MemInfo, error) {
@@ -1574,7 +1574,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/kai-w/evmbench/internal/report"
 )
 
 type mountEntry struct {
@@ -1738,7 +1738,7 @@ import (
 	"runtime/debug"
 	"strconv"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/kai-w/evmbench/internal/report"
 )
 
 func collectGo() report.GoInfo {
@@ -1805,7 +1805,7 @@ package sysinfo
 import (
 	"context"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/kai-w/evmbench/internal/report"
 )
 
 // Collect returns a Sysinfo populated by inspecting the host. interestingPaths
@@ -1951,7 +1951,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/kai-w/evmbench/internal/report"
 )
 
 const probeTimeout = 500 * time.Millisecond
@@ -2149,12 +2149,12 @@ git commit -m "sysinfo: parallel cloud metadata probes (aws/aliyun/gcp)"
 ### Task 14: Wire `sysinfo` subcommand
 
 **Files:**
-- Create: `cmd/bscbench/sysinfo.go`
-- Modify: `cmd/bscbench/root.go`
+- Create: `cmd/evmbench/sysinfo.go`
+- Modify: `cmd/evmbench/root.go`
 
 - [ ] **Step 1: Implement the subcommand**
 
-Write `cmd/bscbench/sysinfo.go`:
+Write `cmd/evmbench/sysinfo.go`:
 
 ```go
 package main
@@ -2167,7 +2167,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kai-w/bscbench/internal/sysinfo"
+	"github.com/kai-w/evmbench/internal/sysinfo"
 )
 
 func newSysinfoCmd() *cobra.Command {
@@ -2199,7 +2199,7 @@ func newSysinfoCmd() *cobra.Command {
 
 - [ ] **Step 2: Register the subcommand**
 
-Edit `cmd/bscbench/root.go`. Replace:
+Edit `cmd/evmbench/root.go`. Replace:
 
 ```go
 	cmd.AddCommand(newVersionCmd())
@@ -2216,7 +2216,7 @@ with:
 Run:
 
 ```bash
-go run ./cmd/bscbench sysinfo
+go run ./cmd/evmbench sysinfo
 ```
 
 Expected: a JSON object with `host`, `cpu`, `memory`, `disk`, `go`, `cloud` keys. On macOS many fields will be empty — that's fine, the tool is Linux-targeted.
@@ -2224,7 +2224,7 @@ Expected: a JSON object with `host`, `cpu`, `memory`, `disk`, `go`, `cloud` keys
 - [ ] **Step 4: Commit**
 
 ```bash
-git add cmd/bscbench/sysinfo.go cmd/bscbench/root.go
+git add cmd/evmbench/sysinfo.go cmd/evmbench/root.go
 git commit -m "cmd: add sysinfo subcommand"
 ```
 
@@ -2257,7 +2257,7 @@ Expected: succeeds. May take several minutes on first build (large dependency tr
 
 - [ ] **Step 3: Verify version subcommand reports BSC version**
 
-Run: `go run ./cmd/bscbench version`
+Run: `go run ./cmd/evmbench version`
 Expected output now includes `bsc=v1.4.8` (or the version chosen).
 
 - [ ] **Step 4: Commit**
@@ -2376,7 +2376,7 @@ Expected: FAIL.
 Write `internal/corpus/manifest.go`:
 
 ```go
-// Package corpus loads and validates the bscbench input directory.
+// Package corpus loads and validates the evmbench input directory.
 package corpus
 
 import (
@@ -2894,7 +2894,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
-// DB is the tuple of low-level handles bscbench needs.
+// DB is the tuple of low-level handles evmbench needs.
 type DB struct {
 	Path  string
 	Disk  ethdb.Database // raw key-value + ancient store
@@ -2917,10 +2917,10 @@ func Open(stateDir string) (*DB, error) {
 		Type:              "pebble",
 		Directory:         chaindata,
 		AncientsDirectory: ancient,
-		Namespace:         "bscbench/",
+		Namespace:         "evmbench/",
 		Cache:             1024,    // MB; small, since we measure VM, not DB cache size effects
 		Handles:           512,
-		ReadOnly:          false,   // we mutate via state Commit; bscbench's runner copies state into a workdir first
+		ReadOnly:          false,   // we mutate via state Commit; evmbench's runner copies state into a workdir first
 	})
 	if err != nil {
 		return nil, fmt.Errorf("rawdb open: %w", err)
@@ -3622,7 +3622,7 @@ package metrics
 import (
 	"sync"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/kai-w/evmbench/internal/report"
 )
 
 // BlockEvent is one block's contribution from the runner.
@@ -3780,7 +3780,7 @@ func TestProcSamplerStartsAndStops(t *testing.T) {
 func TestParseSelfStat(t *testing.T) {
 	// fields: pid, comm, state, ppid, ..., utime(14), stime(15), ...
 	// Synthetic line covering enough fields to extract utime/stime.
-	line := "1234 (bscbench) S 1 1234 1234 0 -1 4194304 100 0 0 0 1500 700 0 0 20 0 1 0 1 0 0\n"
+	line := "1234 (evmbench) S 1 1234 1234 0 -1 4194304 100 0 0 0 1500 700 0 0 20 0 1 0 1 0 0\n"
 	utime, stime, err := parseSelfStat(line)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -3812,7 +3812,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kai-w/bscbench/internal/report"
+	"github.com/kai-w/evmbench/internal/report"
 )
 
 // ProcSampler periodically reads /proc/self/{stat,status,io} and emits ProcSample.
@@ -4079,7 +4079,7 @@ func CopyState(src, dst string) error {
 	if err := tryReflinkCopy(src, dst); err == nil {
 		return nil
 	} else {
-		fmt.Fprintf(os.Stderr, "bscbench: reflink copy failed (%v), falling back to full copy\n", err)
+		fmt.Fprintf(os.Stderr, "evmbench: reflink copy failed (%v), falling back to full copy\n", err)
 	}
 	return walkCopy(src, dst)
 }
@@ -4217,9 +4217,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/state"
 
-	"github.com/kai-w/bscbench/internal/chain"
-	"github.com/kai-w/bscbench/internal/corpus"
-	"github.com/kai-w/bscbench/internal/metrics"
+	"github.com/kai-w/evmbench/internal/chain"
+	"github.com/kai-w/evmbench/internal/corpus"
+	"github.com/kai-w/evmbench/internal/metrics"
 )
 
 // PassConfig configures a single pass (warmup or measured).
@@ -4367,9 +4367,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/vm"
 
-	"github.com/kai-w/bscbench/internal/chain"
-	"github.com/kai-w/bscbench/internal/corpus"
-	"github.com/kai-w/bscbench/internal/metrics"
+	"github.com/kai-w/evmbench/internal/chain"
+	"github.com/kai-w/evmbench/internal/corpus"
+	"github.com/kai-w/evmbench/internal/metrics"
 )
 ```
 
@@ -4430,8 +4430,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/kai-w/bscbench/internal/chain"
-	"github.com/kai-w/bscbench/internal/corpus"
+	"github.com/kai-w/evmbench/internal/chain"
+	"github.com/kai-w/evmbench/internal/corpus"
 )
 
 type DoublePassConfig struct {
@@ -4441,7 +4441,7 @@ type DoublePassConfig struct {
 
 func (c *DoublePassConfig) applyDefaults() {
 	if c.WorkDirRoot == "" {
-		c.WorkDirRoot = filepath.Join(os.TempDir(), "bscbench-workdir")
+		c.WorkDirRoot = filepath.Join(os.TempDir(), "evmbench-workdir")
 	}
 }
 
@@ -4467,12 +4467,12 @@ func RunDoublePass(
 		if err := RemoveWorkdir(warmDir); err != nil {
 			return out, fmt.Errorf("clean warmup workdir: %w", err)
 		}
-		fmt.Fprintf(os.Stderr, "[bscbench] warmup: copying state to %s ...\n", warmDir)
+		fmt.Fprintf(os.Stderr, "[evmbench] warmup: copying state to %s ...\n", warmDir)
 		t0 := time.Now()
 		if err := CopyState(c.StateDir(), warmDir); err != nil {
 			return out, fmt.Errorf("copy warmup state: %w", err)
 		}
-		fmt.Fprintf(os.Stderr, "[bscbench] warmup: copy done in %s\n", time.Since(t0))
+		fmt.Fprintf(os.Stderr, "[evmbench] warmup: copy done in %s\n", time.Since(t0))
 
 		db, err := chain.Open(warmDir)
 		if err != nil {
@@ -4491,12 +4491,12 @@ func RunDoublePass(
 	if err := RemoveWorkdir(measDir); err != nil {
 		return out, fmt.Errorf("clean measured workdir: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "[bscbench] measured: copying state to %s ...\n", measDir)
+	fmt.Fprintf(os.Stderr, "[evmbench] measured: copying state to %s ...\n", measDir)
 	t0 := time.Now()
 	if err := CopyState(c.StateDir(), measDir); err != nil {
 		return out, fmt.Errorf("copy measured state: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "[bscbench] measured: copy done in %s\n", time.Since(t0))
+	fmt.Fprintf(os.Stderr, "[evmbench] measured: copy done in %s\n", time.Since(t0))
 
 	db, err := chain.Open(measDir)
 	if err != nil {
@@ -4508,7 +4508,7 @@ func RunDoublePass(
 		return out, fmt.Errorf("measured pass: %w", err)
 	}
 	if measRes.Sampler != nil {
-		// caller stops it during summary collection in cmd/bscbench/replay.go
+		// caller stops it during summary collection in cmd/evmbench/replay.go
 	}
 	out.Measured = measRes
 	return out, nil
@@ -4534,14 +4534,14 @@ git commit -m "runner: double-pass coordinator with state reset"
 ### Task 29: `replay` subcommand
 
 **Files:**
-- Create: `cmd/bscbench/replay.go`
-- Modify: `cmd/bscbench/root.go`
+- Create: `cmd/evmbench/replay.go`
+- Modify: `cmd/evmbench/root.go`
 
 The `replay` subcommand is the integration glue: parse flags, load corpus, run double-pass, build the Result, write JSON + CSVs.
 
 - [ ] **Step 1: Implement replay**
 
-Write `cmd/bscbench/replay.go`:
+Write `cmd/evmbench/replay.go`:
 
 ```go
 package main
@@ -4558,11 +4558,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kai-w/bscbench/internal/corpus"
-	"github.com/kai-w/bscbench/internal/metrics"
-	"github.com/kai-w/bscbench/internal/report"
-	"github.com/kai-w/bscbench/internal/runner"
-	"github.com/kai-w/bscbench/internal/sysinfo"
+	"github.com/kai-w/evmbench/internal/corpus"
+	"github.com/kai-w/evmbench/internal/metrics"
+	"github.com/kai-w/evmbench/internal/report"
+	"github.com/kai-w/evmbench/internal/runner"
+	"github.com/kai-w/evmbench/internal/sysinfo"
 )
 
 func newReplayCmd() *cobra.Command {
@@ -4591,7 +4591,7 @@ func newReplayCmd() *cobra.Command {
 	cmd.Flags().Uint64Var(&from, "from", 0, "Override manifest from_block (0 = use manifest)")
 	cmd.Flags().Uint64Var(&to, "to", 0, "Override manifest to_block (0 = use manifest)")
 	cmd.Flags().BoolVar(&skipWarmup, "skip-warmup", false, "Skip the warmup pass (debug only; results not comparable)")
-	cmd.Flags().StringVar(&workDirRoot, "work-dir", "", "Where to copy state for each pass (default: $TMPDIR/bscbench-workdir)")
+	cmd.Flags().StringVar(&workDirRoot, "work-dir", "", "Where to copy state for each pass (default: $TMPDIR/evmbench-workdir)")
 	return cmd
 }
 
@@ -4610,7 +4610,7 @@ func runReplay(input, outDir string, fromOverride, toOverride uint64, skipWarmup
 	defer c.Close()
 
 	if fromOverride != 0 || toOverride != 0 {
-		fmt.Fprintln(os.Stderr, "[bscbench] WARNING: --from/--to overrides selected; result is non-canonical")
+		fmt.Fprintln(os.Stderr, "[evmbench] WARNING: --from/--to overrides selected; result is non-canonical")
 	}
 
 	startedAt := time.Now().UTC()
@@ -4722,7 +4722,7 @@ func runReplay(input, outDir string, fromOverride, toOverride uint64, skipWarmup
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "[bscbench] done. mgasps=%.2f wall=%.1fs out=%s\n",
+	fmt.Fprintf(os.Stderr, "[evmbench] done. mgasps=%.2f wall=%.1fs out=%s\n",
 		r.Metrics.Mgasps, r.Metrics.TotalWallSec, outDir)
 	return nil
 }
@@ -4788,7 +4788,7 @@ var _ = metrics.NewBlockCollector
 
 - [ ] **Step 2: Register the subcommand**
 
-Edit `cmd/bscbench/root.go`. Replace:
+Edit `cmd/evmbench/root.go`. Replace:
 
 ```go
 	cmd.AddCommand(newVersionCmd(), newSysinfoCmd())
@@ -4805,13 +4805,13 @@ with:
 Run: `go build ./...`
 Expected: succeeds.
 
-Run: `go run ./cmd/bscbench replay --help`
+Run: `go run ./cmd/evmbench replay --help`
 Expected: prints flag descriptions.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add cmd/bscbench/replay.go cmd/bscbench/root.go
+git add cmd/evmbench/replay.go cmd/evmbench/root.go
 git commit -m "cmd: replay subcommand wires corpus + runner + report"
 ```
 
@@ -4822,14 +4822,14 @@ git commit -m "cmd: replay subcommand wires corpus + runner + report"
 ### Task 30: Integration test scaffold
 
 **Files:**
-- Create: `cmd/bscbench/replay_integration_test.go`
+- Create: `cmd/evmbench/replay_integration_test.go`
 - Create: `testdata/integration/README.md`
 
 The full integration test requires a real BSC testnet state snapshot + 50 blocks. Building that fixture is an ops task; this scaffold lays out what the test will look like and how the fixture is expected to be staged. The test is gated by a build tag and skipped automatically if the fixture isn't present.
 
 - [ ] **Step 1: Scaffold the integration test**
 
-Write `cmd/bscbench/replay_integration_test.go`:
+Write `cmd/evmbench/replay_integration_test.go`:
 
 ```go
 //go:build integration
@@ -4895,7 +4895,7 @@ Write `testdata/integration/README.md`:
 ```markdown
 # Integration Test Fixture
 
-The `cmd/bscbench` integration test (gated by `-tags=integration`) expects a
+The `cmd/evmbench` integration test (gated by `-tags=integration`) expects a
 small, real BSC corpus at:
 
     testdata/integration/chapel-50blocks/
@@ -4917,21 +4917,21 @@ This fixture is **not committed** to the repo (size, churn). To regenerate:
 
 Run the integration test:
 
-    go test -tags=integration ./cmd/bscbench/ -run TestReplayIntegrationChapel -v
+    go test -tags=integration ./cmd/evmbench/ -run TestReplayIntegrationChapel -v
 ```
 
 - [ ] **Step 3: Verify the build tag works**
 
-Run: `go test ./cmd/bscbench/ -v`
+Run: `go test ./cmd/evmbench/ -v`
 Expected: PASS (the integration test is excluded without the tag).
 
-Run: `go test -tags=integration ./cmd/bscbench/ -run TestReplayIntegrationChapel -v`
+Run: `go test -tags=integration ./cmd/evmbench/ -run TestReplayIntegrationChapel -v`
 Expected: PASS with a `t.Skip` log message ("integration fixture missing at ...") when the fixture is absent.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add cmd/bscbench/replay_integration_test.go testdata/integration/README.md
+git add cmd/evmbench/replay_integration_test.go testdata/integration/README.md
 git commit -m "test: integration scaffold for chapel 50-block replay"
 ```
 

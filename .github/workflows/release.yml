@@ -33,19 +33,19 @@ jobs:
           CGO_ENABLED: '1'
         run: |
           version="${GITHUB_REF_NAME}"
-          out="bscbench-${version}-${GOOS}-${GOARCH}"
+          out="evmbench-${version}-${GOOS}-${GOARCH}"
           mkdir -p "dist/${out}"
           go build \
             -ldflags="-s -w -X main.Version=${version}" \
-            -o "dist/${out}/bscbench" \
-            ./cmd/bscbench
+            -o "dist/${out}/evmbench" \
+            ./cmd/evmbench
           cp README.md LICENSE "dist/${out}/" 2>/dev/null || true
           tar -C dist -czvf "dist/${out}.tar.gz" "${out}"
           ( cd dist && sha256sum "${out}.tar.gz" > "${out}.tar.gz.sha256" )
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bscbench-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: evmbench-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
             dist/*.tar.gz
             dist/*.tar.gz.sha256

@@ -1,4 +1,4 @@
-// Package report defines the on-disk output schema for bscbench runs.
+// Package report defines the on-disk output schema for evmbench runs.
 package report
 
 import "time"
@@ -17,7 +17,7 @@ type RunMeta struct {
 	ID              string    `json:"id"`
 	StartedAt       time.Time `json:"started_at"`
 	FinishedAt      time.Time `json:"finished_at"`
-	BscbenchVersion string    `json:"bscbench_version"`
+	BscbenchVersion string    `json:"evmbench_version"`
 	BSCVersion      string    `json:"bsc_version"`
 	InputHash       string    `json:"input_hash"`
 	FromBlock       uint64    `json:"from_block"`

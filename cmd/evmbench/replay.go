@@ -40,7 +40,7 @@ func newReplayCmd() *cobra.Command {
 	cmd.Flags().Uint64Var(&from, "from", 0, "(reserved, not yet implemented) Override manifest from_block")
 	cmd.Flags().Uint64Var(&to, "to", 0, "(reserved, not yet implemented) Override manifest to_block")
 	cmd.Flags().BoolVar(&skipWarmup, "skip-warmup", false, "Skip the warmup pass (debug only; results not comparable)")
-	cmd.Flags().StringVar(&workDirRoot, "work-dir", "", "Where to copy state for each pass (default: $TMPDIR/bscbench-workdir)")
+	cmd.Flags().StringVar(&workDirRoot, "work-dir", "", "Where to copy state for each pass (default: $TMPDIR/evmbench-workdir)")
 	cmd.Flags().DurationVar(&samplerInterval, "sampler-interval", time.Second, "/proc sampler period; canonical runs use 1s, short runs may want 50ms")
 	return cmd
 }
@@ -171,7 +171,7 @@ func runReplay(input, outDir string, fromOverride, toOverride uint64, skipWarmup
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "[bscbench] done. mgasps=%.2f wall=%.1fs out=%s\n",
+	fmt.Fprintf(os.Stderr, "[evmbench] done. mgasps=%.2f wall=%.1fs out=%s\n",
 		r.Metrics.Mgasps, r.Metrics.TotalWallSec, outDir)
 	return nil
 }
@@ -195,7 +195,7 @@ func buildRunID(t time.Time, inputHash, hostname string) string {
 		hostname = "unknown"
 	}
 	ts := t.Format("2006-01-02T15-04-05Z")
-	return fmt.Sprintf("%s_bsc10k_%s_%s", ts, hostname, short)
+	return fmt.Sprintf("%s_evm10k_%s_%s", ts, hostname, short)
 }
 
 func summarizeSamples(samples []report.ProcSample) (cpuAvg, cpuMax float64, rssPeak uint64) {

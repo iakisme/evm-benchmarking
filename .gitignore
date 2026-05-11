@@ -1,5 +1,5 @@
 # Build artifacts
-/bscbench
+/evmbench
 /prepare-fixture
 /dist/
 /build/
@@ -10,7 +10,7 @@
 /testdata/integration/chapel-bench/
 /testdata/integration/chapel-smoke/
 
-# Default bscbench output directory + multi-trial bench harness output
+# Default evmbench output directory + multi-trial bench harness output
 /results/
 /bench-runs-*/
 

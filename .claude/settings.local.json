@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(getent group *)",
+      "Read(//usr/lib/**)",
+      "Bash(set -e)",
+      "Bash(useradd -m -s /bin/bash -G sudo coder)",
+      "Bash(chpasswd)",
+      "Bash(chmod 440 /etc/sudoers.d/coder)",
+      "Bash(visudo -cf /etc/sudoers.d/coder)"
+    ]
+  }
+}

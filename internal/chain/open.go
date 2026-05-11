@@ -12,7 +12,7 @@ import (
 	pebbledb "github.com/ethereum/go-ethereum/ethdb/pebble"
 )
 
-// DB is the tuple of low-level handles bscbench needs.
+// DB is the tuple of low-level handles evmbench needs.
 //
 // Note: we do NOT construct a triedb here. Under path-based state scheme
 // the triedb opens (and locks via FLOCK) the state-history freezer, and the
@@ -39,18 +39,18 @@ func Open(stateDir string) (*DB, error) {
 
 	// Open the underlying pebble KV first; rawdb.Open then wraps it together
 	// with the on-disk freezer. Cache/handles are intentionally small —
-	// bscbench measures EVM throughput, not DB cache sizing.
+	// evmbench measures EVM throughput, not DB cache sizing.
 	const (
 		cacheMB     = 1024
 		fileHandles = 512
 	)
-	kv, err := pebbledb.New(chaindata, cacheMB, fileHandles, "bscbench/", false /*readonly*/)
+	kv, err := pebbledb.New(chaindata, cacheMB, fileHandles, "evmbench/", false /*readonly*/)
 	if err != nil {
 		return nil, fmt.Errorf("pebble open: %w", err)
 	}
 	disk, err := rawdb.Open(kv, rawdb.OpenOptions{
 		Ancient:          ancient,
-		MetricsNamespace: "bscbench/",
+		MetricsNamespace: "evmbench/",
 		ReadOnly:         false,
 	})
 	if err != nil {

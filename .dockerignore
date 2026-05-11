@@ -10,7 +10,7 @@ bench-runs-*/
 dist/
 build/
 prepare-fixture
-bscbench
+evmbench
 
 # Generated fixtures (regenerate inside the container if needed)
 testdata/integration/chapel-bench/

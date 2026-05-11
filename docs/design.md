@@ -6,7 +6,7 @@
 
 ## 1. Goal
 
-Build a single Go binary, `bscbench`, that replays a fixed 10,000-block window on a local BSC state snapshot, produces EVM-layer and coarse system-layer metrics, and writes them to JSON/CSV. The intended use is comparing EVM execution performance across different cloud VM configurations by running the same binary on the same input dataset across machines and diffing the outputs.
+Build a single Go binary, `evmbench`, that replays a fixed 10,000-block window on a local BSC state snapshot, produces EVM-layer and coarse system-layer metrics, and writes them to JSON/CSV. The intended use is comparing EVM execution performance across different cloud VM configurations by running the same binary on the same input dataset across machines and diffing the outputs.
 
 Non-goals:
 
@@ -25,24 +25,24 @@ Non-goals:
 | Dataset | Deferred to user. Tool accepts a local input directory with a fixed contract (§5). |
 | Window | 10,000 blocks by default, canonical unit of comparison. `--from/--to` allow override but non-canonical runs are marked. |
 | Output | Local files only. `result.json` + `blocks.csv` + `proc_samples.csv`. No push to external systems. |
-| Orchestration | Out of scope. Each machine runs `bscbench replay` independently; user diffs JSONs offline. |
+| Orchestration | Out of scope. Each machine runs `evmbench replay` independently; user diffs JSONs offline. |
 
 ## 3. Architecture
 
 ### 3.1 Binary surface
 
 ```
-bscbench replay   --input=<dir> --out-dir=<dir> [--from=N --to=M] [--skip-warmup]
-bscbench sysinfo  --out=<file>
-bscbench version
+evmbench replay   --input=<dir> --out-dir=<dir> [--from=N --to=M] [--skip-warmup]
+evmbench sysinfo  --out=<file>
+evmbench version
 ```
 
-`replay` is the primary command. `sysinfo` is redundant with `replay` (replay always captures sysinfo inline) but useful for standalone host inventory. `version` emits bscbench version + resolved BSC dependency version.
+`replay` is the primary command. `sysinfo` is redundant with `replay` (replay always captures sysinfo inline) but useful for standalone host inventory. `version` emits evmbench version + resolved BSC dependency version.
 
 ### 3.2 Package layout
 
 ```
-cmd/bscbench/            # main, cobra command assembly
+cmd/evmbench/            # main, cobra command assembly
 internal/
   chain/                 # BSC BlockChain + StateDB construction (consensus-bypassed)
   corpus/                # local input loader: manifest + blocks.rlp + state/ validation
@@ -69,7 +69,7 @@ There is one execution path. Replay consumes blocks from `corpus`, calls an inte
 
 ## 4. Double-Pass Warmup
 
-Each `bscbench replay` invocation runs the full 10,000-block window twice:
+Each `evmbench replay` invocation runs the full 10,000-block window twice:
 
 ```
 1. cp --reflink=auto state/ workdir_A/   (fallback: cp -r, with warning)
@@ -92,7 +92,7 @@ Cost: two state copies (~7 min each for a 400 GB snapshot on NVMe without reflin
 
 ## 5. Input Contract
 
-`bscbench replay --input=<dir>` expects exactly this layout:
+`evmbench replay --input=<dir>` expects exactly this layout:
 
 ```
 <input-dir>/
@@ -205,7 +205,7 @@ Three files written to `--out-dir`:
     "id": "<ISO8601>_bsc10k_<hostname>_<input_hash_short>",
     "started_at": "…",
     "finished_at": "…",
-    "bscbench_version": "…",
+    "evmbench_version": "…",
     "bsc_version": "…",
     "input_hash": "sha256:…",
     "from_block": …,
@@ -288,7 +288,7 @@ Three layers, distinct purposes:
 **Baseline regression** (manual/cron, not in CI):
 
 - One canonical dataset, one canonical baseline host.
-- Run after any BSC dependency bump or non-trivial bscbench change.
+- Run after any BSC dependency bump or non-trivial evmbench change.
 - Compare `mgasps` to the last recorded value; > 5% drift opens an issue.
 - Not CI-gated — dataset and runtime are too large.
 
@@ -296,7 +296,7 @@ Three layers, distinct purposes:
 
 - **Dataset sourcing**: out of scope for this tool; user-prepared. The tool's only contract is the input directory (§5). A separate `scripts/prepare-dataset/` area may later hold helper scripts, but that is a distinct project.
 - **System transaction handling under consensus bypass**: need to confirm at implementation time whether skipping `Finalize` causes any transactions to apply incorrectly. If so, a minimal replacement for the validator-rotation logic may be required. Documented here so the implementer tests this case explicitly on a known-good block range.
-- **BSC fork schedule tracking**: every BSC hard fork changes `ChainConfig`. Dataset `manifest.json` encodes the fork schedule used during preparation; bscbench compares against its compiled-in BSC version's default config and warns on mismatch. Version-upgrade discipline for bscbench itself is to rerun the baseline regression after every BSC dependency bump.
+- **BSC fork schedule tracking**: every BSC hard fork changes `ChainConfig`. Dataset `manifest.json` encodes the fork schedule used during preparation; evmbench compares against its compiled-in BSC version's default config and warns on mismatch. Version-upgrade discipline for evmbench itself is to rerun the baseline regression after every BSC dependency bump.
 
 ## 11. Summary of Decisions
 

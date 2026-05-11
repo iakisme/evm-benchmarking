@@ -6,7 +6,7 @@ committed** (pebble metadata churns across regenerations).
 | Path | Size | Purpose |
 |---|---|---|
 | `chapel-smoke/` | ~1 MiB, 200 blk × 2 tx | gated integration test (`-tags=integration`) |
-| `chapel-bench/` | ~1.5 GiB, 40k blk × 15 tx | local perf run; default for `bscbench replay` |
+| `chapel-bench/` | ~1.5 GiB, 40k blk × 15 tx | local perf run; default for `evmbench replay` |
 
 ## Regenerate
 
@@ -23,14 +23,14 @@ Override for the smoke fixture used by the integration test:
 
 ```
 # canonical double-pass replay against the bench fixture (no flags needed)
-bscbench replay
+evmbench replay
 ```
 
 Defaults: `--input=testdata/integration/chapel-bench --out-dir=results`.
 
 ```
 # integration test against the smoke fixture
-go test -tags=integration ./cmd/bscbench/ -run TestReplayIntegrationChapel -v
+go test -tags=integration ./cmd/evmbench/ -run TestReplayIntegrationChapel -v
 ```
 
 ## Workload (both fixtures)
@@ -49,7 +49,7 @@ one `LOG1` per writer call, so cold-storage growth, warm-modify, and
 log emission paths are all covered.
 
 This is **not** a check on real BSC mainnet behavior. The fixture
-produces stable structure for measuring bscbench itself; for real
+produces stable structure for measuring evmbench itself; for real
 performance signals against mainnet workloads, prepare a corpus from a
 real BSC node following the spec input contract.
 

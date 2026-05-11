@@ -10,8 +10,8 @@ COPY . .
 ARG VERSION=dev
 RUN CGO_ENABLED=1 go build \
     -ldflags="-s -w -X main.Version=${VERSION}" \
-    -o /out/bscbench \
-    ./cmd/bscbench
+    -o /out/evmbench \
+    ./cmd/evmbench
 
 FROM debian:bookworm-slim
 
@@ -19,6 +19,6 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /out/bscbench /usr/local/bin/bscbench
+COPY --from=build /out/evmbench /usr/local/bin/evmbench
 
-ENTRYPOINT ["bscbench"]
+ENTRYPOINT ["evmbench"]

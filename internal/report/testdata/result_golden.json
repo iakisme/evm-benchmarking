@@ -4,7 +4,7 @@
     "id": "2026-05-02T14-30-00Z_bsc10k_host_abc12345",
     "started_at": "2026-05-02T14:30:00Z",
     "finished_at": "2026-05-02T15:32:11Z",
-    "bscbench_version": "v0.1.0",
+    "evmbench_version": "v0.1.0",
     "bsc_version": "v1.7.3",
     "input_hash": "sha256:abc",
     "from_block": 40000000,

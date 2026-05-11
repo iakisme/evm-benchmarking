@@ -17,8 +17,8 @@ func TestVersionCommand(t *testing.T) {
 	}
 
 	out := buf.String()
-	if !strings.Contains(out, "bscbench") {
-		t.Errorf("expected output to mention bscbench, got %q", out)
+	if !strings.Contains(out, "evmbench") {
+		t.Errorf("expected output to mention evmbench, got %q", out)
 	}
 	if !strings.Contains(out, "bsc=") {
 		t.Errorf("expected output to include bsc dependency version, got %q", out)

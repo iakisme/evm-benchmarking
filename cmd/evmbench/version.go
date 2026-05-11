@@ -12,10 +12,10 @@ var Version = "dev"
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
-		Short: "Print bscbench and BSC dependency versions",
+		Short: "Print evmbench and BSC dependency versions",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			info, _ := debug.ReadBuildInfo()
-			cmd.Printf("bscbench=%s bsc=%s go=%s\n",
+			cmd.Printf("evmbench=%s bsc=%s go=%s\n",
 				Version, bscDepVersion(info), goVersion(info))
 			return nil
 		},

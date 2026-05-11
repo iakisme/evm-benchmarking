@@ -29,4 +29,4 @@ jobs:
         run: go test ./...
 
       - name: integration test (skipped without fixture)
-        run: go test -tags=integration -run TestReplayIntegrationChapel -v ./cmd/bscbench/
+        run: go test -tags=integration -run TestReplayIntegrationChapel -v ./cmd/evmbench/

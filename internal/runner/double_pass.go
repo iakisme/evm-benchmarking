@@ -20,7 +20,7 @@ type DoublePassConfig struct {
 
 func (c *DoublePassConfig) applyDefaults() {
 	if c.WorkDirRoot == "" {
-		c.WorkDirRoot = filepath.Join(os.TempDir(), "bscbench-workdir")
+		c.WorkDirRoot = filepath.Join(os.TempDir(), "evmbench-workdir")
 	}
 }
 
@@ -49,12 +49,12 @@ func RunDoublePass(
 		if err := RemoveWorkdir(warmDir); err != nil {
 			return out, fmt.Errorf("clean warmup workdir: %w", err)
 		}
-		fmt.Fprintf(os.Stderr, "[bscbench] warmup: copying state to %s ...\n", warmDir)
+		fmt.Fprintf(os.Stderr, "[evmbench] warmup: copying state to %s ...\n", warmDir)
 		t0 := time.Now()
 		if err := CopyState(c.StateDir(), warmDir); err != nil {
 			return out, fmt.Errorf("copy warmup state: %w", err)
 		}
-		fmt.Fprintf(os.Stderr, "[bscbench] warmup: copy done in %s\n", time.Since(t0))
+		fmt.Fprintf(os.Stderr, "[evmbench] warmup: copy done in %s\n", time.Since(t0))
 
 		db, err := chain.Open(warmDir)
 		if err != nil {
@@ -73,12 +73,12 @@ func RunDoublePass(
 	if err := RemoveWorkdir(measDir); err != nil {
 		return out, fmt.Errorf("clean measured workdir: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "[bscbench] measured: copying state to %s ...\n", measDir)
+	fmt.Fprintf(os.Stderr, "[evmbench] measured: copying state to %s ...\n", measDir)
 	t0 := time.Now()
 	if err := CopyState(c.StateDir(), measDir); err != nil {
 		return out, fmt.Errorf("copy measured state: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "[bscbench] measured: copy done in %s\n", time.Since(t0))
+	fmt.Fprintf(os.Stderr, "[evmbench] measured: copy done in %s\n", time.Since(t0))
 
 	db, err := chain.Open(measDir)
 	if err != nil {
@@ -90,7 +90,7 @@ func RunDoublePass(
 		return out, fmt.Errorf("measured pass: %w", err)
 	}
 	if measRes.Sampler != nil {
-		// caller stops it during summary collection in cmd/bscbench/replay.go
+		// caller stops it during summary collection in cmd/evmbench/replay.go
 	}
 	out.Measured = measRes
 	return out, nil
